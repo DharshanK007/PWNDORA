@@ -1,0 +1,1 @@
+import{j as i,C as t}from"./index-Dq5J0Q2Y.js";import{P as e}from"./PlaceholderPage-CTNGyt8x.js";function s(){return i.jsx(e,{title:"Audit Logs",description:"Immutable record of all enterprise activities, user logins, and configuration changes.",icon:t})}export{s as default};

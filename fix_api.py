@@ -1,0 +1,36 @@
+content = '''from fastapi import APIRouter
+from app.api.v1.endpoints import (
+    auth,
+    users,
+    employees,
+    departments,
+    devices,
+    firmwares,
+    locations,
+    tickets,
+    inventory,
+    notifications,
+    reports,
+    activity_logs,
+    audit,
+    timeline
+)
+
+api_router = APIRouter()
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(employees.router, prefix="/employees", tags=["employees"])
+api_router.include_router(departments.router, prefix="/departments", tags=["departments"])
+api_router.include_router(devices.router, prefix="/devices", tags=["devices"])
+api_router.include_router(firmwares.router, prefix="/firmwares", tags=["firmwares"])
+api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
+api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
+api_router.include_router(inventory.router, prefix="/inventory", tags=["inventory"])
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(activity_logs.router, prefix="/activity_logs", tags=["activity_logs"])
+api_router.include_router(audit.router, prefix="/audit", tags=["audit"])
+api_router.include_router(timeline.router, prefix="/timeline", tags=["timeline"])
+'''
+with open("backend/app/api/v1/api.py", "w") as f:
+    f.write(content)

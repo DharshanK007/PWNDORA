@@ -1,0 +1,23 @@
+id: "scenario_001"
+name: "Production Line Firmware Failure"
+category: "Configuration"
+difficulty: "Beginner"
+required_role: "Engineer"
+business_context: "Production Line 2 has stopped responding after a failed firmware deployment. Investigate the root cause."
+stages:
+  - id: 1
+    objective: "Read the maintenance ticket."
+    required_action: "Fetch clue ticket_001"
+    next_stage: 2
+  - id: 2
+    objective: "Analyze deployment log."
+    required_action: "Fetch clue log_001"
+    next_stage: 3
+  - id: 3
+    objective: "Find leaked config backup."
+    required_action: "Fetch clue config_backup"
+    next_stage: 4
+  - id: 4
+    objective: "Exploit vulnerable admin endpoint."
+    required_action: "POST /auth/login with admin"
+    next_stage: null

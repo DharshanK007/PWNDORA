@@ -1,0 +1,1 @@
+import{j as t,A as i}from"./index-Dq5J0Q2Y.js";import{P as o}from"./PlaceholderPage-CTNGyt8x.js";function n(){return t.jsx(o,{title:"System Monitoring",description:"Real-time monitoring of all industrial assets, PLCs, and network traffic.",icon:i})}export{n as default};

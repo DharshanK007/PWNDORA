@@ -1,0 +1,1 @@
+import{j as e,d as a}from"./index-Dq5J0Q2Y.js";import{P as r}from"./PlaceholderPage-CTNGyt8x.js";function s(){return e.jsx(r,{title:"Scenario Replay",description:"Review and replay past cyber range scenarios to analyze attacker behaviors and improve defenses.",icon:a})}export{s as default};

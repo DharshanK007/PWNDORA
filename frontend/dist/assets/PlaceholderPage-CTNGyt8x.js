@@ -1,0 +1,6 @@
+import{b as s,j as e}from"./index-Dq5J0Q2Y.js";/**
+ * @license lucide-react v0.441.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const m=s("Hammer",[["path",{d:"m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9",key:"eefl8a"}],["path",{d:"m18 15 4-4",key:"16gjal"}],["path",{d:"m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172V7l-2.26-2.26a6 6 0 0 0-4.202-1.756L9 2.96l.92.82A6.18 6.18 0 0 1 12 8.4V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5",key:"b7pghm"}]]);function n({title:r,description:t="This enterprise module is currently under development.",icon:a=m}){return e.jsxs("div",{className:"flex h-full flex-col items-center justify-center text-center animate-fade-in p-8",children:[e.jsx("div",{className:"flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 mb-6",children:e.jsx(a,{className:"h-10 w-10 text-primary"})}),e.jsx("h2",{className:"text-2xl font-bold tracking-tight text-foreground mb-2",children:r}),e.jsx("p",{className:"text-muted-foreground max-w-md mb-8",children:t}),e.jsxs("div",{className:"inline-flex items-center rounded-full border border-border bg-background px-4 py-1.5 text-sm font-medium shadow-sm",children:[e.jsx("span",{className:"flex h-2 w-2 rounded-full bg-amber-500 mr-2 animate-pulse"}),"Coming Soon"]})]})}export{n as P};

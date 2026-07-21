@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: neofactory
+      POSTGRES_PASSWORD: neosecurepass
+      POSTGRES_DB: neofactory
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neofactory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8001:8000"
+    environment:
+      POSTGRES_SERVER: postgres
+      POSTGRES_USER: neofactory
+      POSTGRES_PASSWORD: neosecurepass
+      POSTGRES_DB: neofactory
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    # Using reload for development
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
