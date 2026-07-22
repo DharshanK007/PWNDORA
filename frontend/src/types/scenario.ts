@@ -38,6 +38,7 @@ export interface ScenarioState {
   user_id: string
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
   current_stage: number
+  completed_stages?: (number | string)[]
   started_at: string
   completed_at: string | null
   score: number

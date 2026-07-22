@@ -70,6 +70,12 @@ def read_device(
     item = device.get(db, id=id)
     if not item:
         raise HTTPException(status_code=404, detail="Device not found")
+        
+    # Stage Gate: Stage 1 check for Operation Phantom Firmware
+    if "PLC-Line2" in item.name or item.asset_group == "Production Line 2":
+        from app.scenarios.stage_gate import advance_if_stage_matches
+        advance_if_stage_matches(db, str(current_user.id), "GET /api/v1/devices/{id}", {"device_id": str(id)})
+        
     return item
 
 @router.delete("/{id}", response_model=DeviceResponse)
@@ -136,6 +142,42 @@ def decommission_device_endpoint(
     if not item:
         raise HTTPException(status_code=404, detail="Device not found")
     return ActionResponse(success=True, message='Action successful', data=device.decommission(db, db_obj=item))
+
+from fastapi import Header
+
+@router.post("/{id}/firmware-push", response_model=ActionResponse[DeviceResponse])
+def firmware_push_device_endpoint(
+    *,
+    db: Session = Depends(deps.get_db),
+    id: UUID,
+    x_user_role: str = Header(None, alias="X-User-Role"),
+    current_user = Depends(deps.get_current_user)
+) -> Any:
+    """
+    Stage 4 Endpoint — Firmware Push.
+    Vulnerable to Client Trust / Session Flaw: reads client-supplied X-User-Role header.
+    """
+    item = device.get(db, id=id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    from app.scenarios.stage_gate import get_active_stage, advance_if_stage_matches
+    
+    # Option B Gating: Only exploitable if learner is actively on Stage 4
+    active_stage = get_active_stage(db, str(current_user.id), "POST /api/v1/devices/{id}/firmware-push")
+    
+    effective_role = x_user_role or (current_user.role.value if current_user and hasattr(current_user.role, "value") else str(current_user.role))
+    
+    if active_stage:
+        # Gated execution path for active lab session
+        advance_if_stage_matches(db, str(current_user.id), "POST /api/v1/devices/{id}/firmware-push", {"role": effective_role, "header_role": x_user_role})
+        return ActionResponse(success=True, message="Firmware push executed via privilege escalation!", data=item)
+    else:
+        # Standard app behavior: require real admin role
+        if effective_role not in ["Administrator", "Manager"]:
+            raise HTTPException(status_code=403, detail="Insufficient privileges to push firmware.")
+        return ActionResponse(success=True, message="Firmware push executed successfully.", data=item)
+
 
 
 WORKFLOW_ACTIONS = {

@@ -20,8 +20,19 @@ def read_reports(
     current_user = Depends(deps.get_current_user)
 ) -> Any:
     """
-    Retrieve reports.
+    Retrieve reports. Auto-generates scenario assessment report if state exists.
     """
+    from app.scenarios.scenario_state_model import ScenarioState
+    from app.report_generator import generate_scenario_report
+
+    # Check if current user has a completed or active ScenarioState
+    state = db.query(ScenarioState).filter(
+        ScenarioState.user_id == current_user.id
+    ).order_by(ScenarioState.started_at.desc()).first()
+
+    if state:
+        generate_scenario_report(state.id, current_user.id)
+
     items = report.get_multi(db, params=params)
     total = report.get_count(db, params=params)
     return {"items": items, "total": total, "skip": params.skip, "limit": params.limit}
@@ -54,6 +65,34 @@ def update_report(
     if not item:
         raise HTTPException(status_code=404, detail="Report not found")
     item = report.update(db, db_obj=item, obj_in=item_in)
+    return item
+
+from pydantic import BaseModel
+
+class ReportSummaryUpdate(BaseModel):
+    summary: str
+    status: str = "Under Review"
+
+@router.patch("/{id}/submit", response_model=ReportResponse)
+def submit_report_review(
+    *,
+    db: Session = Depends(deps.get_db),
+    id: UUID,
+    item_in: ReportSummaryUpdate,
+    current_user = Depends(deps.get_current_user)
+) -> Any:
+    """
+    Submit updated report summary (analyst notes & recommendations) for review.
+    """
+    item = report.get(db, id=id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    item.summary = item_in.summary
+    if item_in.status == "Under Review":
+        item.status = "Under Review"
+    db.commit()
+    db.refresh(item)
     return item
 
 @router.get("/{id}", response_model=ReportResponse)

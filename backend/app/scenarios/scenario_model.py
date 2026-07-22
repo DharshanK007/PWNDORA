@@ -20,4 +20,3 @@ class Scenario(Base):
     tags: Mapped[list] = mapped_column(JSON, nullable=True)
     affected_assets: Mapped[list] = mapped_column(JSON, nullable=True)
 
-    states: Mapped[list["ScenarioState"]] = relationship("ScenarioState", back_populates="scenario", cascade="all, delete-orphan")

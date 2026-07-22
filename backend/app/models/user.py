@@ -36,4 +36,3 @@ class User(Base):
     employee: Mapped[Optional["Employee"]] = relationship(back_populates="user", uselist=False, lazy="selectin")
     activity_logs: Mapped[List["ActivityLog"]] = relationship(back_populates="user", lazy="selectin")
     notifications: Mapped[List["Notification"]] = relationship(back_populates="recipient", foreign_keys='Notification.recipient_id', lazy="selectin")
-    scenario_states: Mapped[list["ScenarioState"]] = relationship("ScenarioState", back_populates="user", cascade="all, delete-orphan")

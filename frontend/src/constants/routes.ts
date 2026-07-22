@@ -16,7 +16,6 @@ export const ROUTES = {
   // ── Cyber Range ──
   SCENARIOS: '/scenarios',
   SCENARIO_DETAIL: '/scenarios/:id',
-  INVESTIGATION: '/investigation',
   REPLAY: '/replay',
 
   // ── Analytics ──

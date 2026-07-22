@@ -70,6 +70,11 @@ def read_employee(
     item = employee.get(db, id=id)
     if not item:
         raise HTTPException(status_code=404, detail="Employee not found")
+        
+    # Stage Gate: Stage 2 IDOR check for Operation Phantom Firmware
+    from app.scenarios.stage_gate import advance_if_stage_matches
+    advance_if_stage_matches(db, str(current_user.id), "GET /api/v1/employees/{id}", {"employee_id": str(id), "employee_name": f"{item.first_name} {item.last_name}"})
+    
     return item
 
 @router.delete("/{id}", response_model=EmployeeResponse)

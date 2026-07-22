@@ -73,9 +73,14 @@ export function ReportsPage() {
       {selectedReport && (
         <ReportViewerDialog
           isOpen={!!selectedReport}
+          reportId={selectedReport.id}
           title={selectedReport.title}
           content={selectedReport.summary || 'No content available for this report.'}
+          status={selectedReport.status}
           onClose={() => setSelectedReport(null)}
+          onSaved={() => {
+            refetch()
+          }}
         />
       )}
     </div>

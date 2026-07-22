@@ -7,6 +7,8 @@ import { Footer } from '@/components/layout/Footer'
 import { useSidebar } from '@/hooks/useSidebar'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
+import { LabStatusBar } from '@/components/lab/LabStatusBar'
+
 export function AppLayout() {
   const { isCollapsed, isMobileOpen, toggleCollapsed, toggleMobile, closeMobile } = useSidebar()
   
@@ -28,6 +30,9 @@ export function AppLayout() {
         
         {/* Breadcrumb Bar */}
         <BreadcrumbBar />
+
+        {/* Lab Status Bar */}
+        <LabStatusBar />
 
         {/* Page Content */}
         <main

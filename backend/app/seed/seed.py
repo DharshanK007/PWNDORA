@@ -50,6 +50,24 @@ def seed_db():
         db.add(admin_emp)
         employees.append(admin_emp)
 
+        # Seed specific Lead Engineer Marcus Chen for Stage 2 FIRST
+        marcus_user = User(email="marcus.chen@neofactory.com", hashed_password=default_pwd, role=RoleEnum.ENGINEER)
+        db.add(marcus_user)
+        db.flush()
+        users.append(marcus_user)
+        marcus_emp = Employee(
+            id="88210345-4242-4111-9999-888888888888",
+            user_id=marcus_user.id,
+            department_id=departments[0].id,
+            first_name="Marcus",
+            last_name="Chen",
+            phone="+15550192834",
+            title="Lead Automation Engineer - Production Line 2",
+            clearance_level="Level 4 (OT)"
+        )
+        db.add(marcus_emp)
+        employees.append(marcus_emp)
+
         roles = [RoleEnum.EMPLOYEE, RoleEnum.ENGINEER, RoleEnum.MANAGER]
         job_titles = [
             "Senior Automation Engineer", "SCADA Administrator", "OT Security Analyst",
@@ -61,7 +79,7 @@ def seed_db():
             "Shift Supervisor", "Process Control Engineer", "Director of Manufacturing"
         ]
         
-        for i in range(199):
+        for i in range(198):
             first_name = fake.first_name()
             last_name = fake.last_name()
             email = f"{first_name.lower()}.{last_name.lower()}{i}@neofactory.com"
@@ -107,9 +125,25 @@ def seed_db():
             firmwares.append(fw)
         db.commit()
 
-        # Seed Devices (100)
+        # Seed Devices (Line 2 Device FIRST so it's on Page 1)
         devices = []
-        for i in range(100):
+        line2_dev = Device(
+            name="PLC-Line2-FW-Controller",
+            mac_address="00:1B:44:11:3A:B7",
+            ip_address="192.168.10.42",
+            status=DeviceStatusEnum.MAINTENANCE,
+            location_id=locations[0].id,
+            firmware_id=firmwares[0].id,
+            vendor="Vendor PLC Corp",
+            asset_group="Production Line 2",
+            operating_system="OT-RTOS v1.2.3 (Outdated)",
+            maintenance_window="Deferred update — vendor advisory pending review",
+            assigned_engineer_id=marcus_emp.id
+        )
+        db.add(line2_dev)
+        devices.append(line2_dev)
+
+        for i in range(99):
             is_network = i < 15  # Make the first 15 devices network infrastructure
             
             if is_network:
@@ -159,17 +193,6 @@ def seed_db():
             )
             db.add(inv)
 
-        # Seed Reports (20)
-        # for i in range(20):
-        #     rep = Report(
-        #         title=f"Monthly {fake.word()} Report",
-        #         report_type=random.choice(["Production", "Maintenance", "Inventory"]),
-        #         file_path=f"/reports/{fake.uuid4()}.pdf",
-        #         summary=fake.paragraph(),
-        #         generated_by_id=random.choice(employees).id
-        #     )
-        #     db.add(rep)
-
         # Seed Notifications (30)
         for i in range(30):
             notif = Notification(
@@ -190,17 +213,18 @@ def seed_db():
                 ip_address=fake.ipv4_private()
             )
             log.created_at = fake.date_time_between(start_date='-30d', end_date='now')
-        # Seed Scenarios
-        scenario_1 = Scenario(
-            id="scenario_001",
+
+        # Seed Scenarios (Pilot: Operation Phantom Firmware)
+        phantom_scenario = Scenario(
+            id="operation_phantom_firmware",
             title="Operation Phantom Firmware",
-            description="A routine firmware deployment on Production Line 2 failed...",
-            business_context="Initial triage suggests a configuration error...",
+            description="A maintenance ticket reports that Production Line 2 stopped after a firmware update. Investigate why.",
+            business_context="A routine firmware deployment on Production Line 2 failed. Triage suggests a configuration error.",
             difficulty="Intermediate",
             category="Multi-Vector Attack Chain",
-            expected_learning_objectives=["Identify authorization flaws", "Find leaked credentials"]
+            expected_learning_objectives=["Recognize outdated components", "Exploit IDOR in employee records", "Use injection on global search", "Exploit client trust session flaw"]
         )
-        db.add(scenario_1)
+        db.add(phantom_scenario)
 
         db.commit()
         print("Database seeded successfully!")

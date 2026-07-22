@@ -18,7 +18,6 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 
 // ─── Skeletons ────────────────────────────────────────────────────────────────
 import { DashboardSkeleton } from '@/components/skeleton/DashboardSkeleton'
-import { WorkspaceSkeleton } from '@/components/skeleton/WorkspaceSkeleton'
 import { ScenarioCatalogSkeleton } from '@/components/skeleton/ScenarioCatalogSkeleton'
 
 // ─── Lazy Loaded Pages ────────────────────────────────────────────────────────
@@ -31,7 +30,6 @@ const MaintenancePage = lazy(() => import('@/pages/maintenance/MaintenancePage')
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const ScenarioCatalogPage = lazy(() => import('@/pages/scenarios/ScenarioCatalogPage').then(m => ({ default: m.ScenarioCatalogPage })))
 const ScenarioDetailsPage = lazy(() => import('@/pages/scenarios/ScenarioDetailsPage').then(m => ({ default: m.ScenarioDetailsPage })))
-const InvestigationWorkspace = lazy(() => import('@/pages/workspace/InvestigationWorkspace').then(m => ({ default: m.InvestigationWorkspace })))
 const ProfilePage = lazy(() => import('@/pages/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
 
@@ -51,7 +49,6 @@ function useRoutePreload() {
       // Preload high-traffic routes immediately after login
       import('@/pages/dashboard/DashboardPage')
       import('@/pages/scenarios/ScenarioCatalogPage')
-      import('@/pages/workspace/InvestigationWorkspace')
     }
   }, [isAuthenticated])
 }
@@ -73,18 +70,6 @@ export function AppRoutes() {
 
       {/* ── Enterprise routes (sidebar layout) ── */}
       <Route element={<ProtectedRoute />}>
-        {/* Investigation Workspace (Own Fullscreen Layout) */}
-        <Route 
-          path={ROUTES.INVESTIGATION} 
-          element={
-            <PageErrorBoundary>
-              <Suspense fallback={<WorkspaceSkeleton />}>
-                <InvestigationWorkspace />
-              </Suspense>
-            </PageErrorBoundary>
-          } 
-        />
-        
         <Route element={<AppLayout />}>
           {/* Enterprise */}
           <Route path={ROUTES.DASHBOARD} element={

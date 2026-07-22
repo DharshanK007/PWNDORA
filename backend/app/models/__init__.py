@@ -13,3 +13,4 @@ from .company import CompanyProfile
 from .network import NetworkZone
 from app.scenarios.scenario_model import Scenario
 from .network import NetworkLink
+from .learner_capability import LearnerCapability

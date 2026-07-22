@@ -28,8 +28,12 @@ const columns: Column<Asset>[] = [
   { key: 'firmware_version', header: 'Firmware' }
 ]
 
+import { AssetDetailsDialog } from '@/components/common/dialog/AssetDetailsDialog'
+import { useState } from 'react'
+
 export function AssetsPage() {
   const { data, isLoading, isError, refetch } = useAssets()
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
 
   return (
     <div className="flex-1 space-y-6">
@@ -60,9 +64,15 @@ export function AssetsPage() {
             isLoading={isLoading}
             keyExtractor={(item) => item.id}
             emptyMessage="No industrial assets found."
+            onRowClick={(item) => setSelectedAsset(item)}
           />
         </InfoPanel>
       )}
+
+      <AssetDetailsDialog
+        asset={selectedAsset}
+        onClose={() => setSelectedAsset(null)}
+      />
     </div>
   )
 }

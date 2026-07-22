@@ -11,14 +11,12 @@ if TYPE_CHECKING:
     from .report import Report
     from .notification import Notification
     from .activity_log import ActivityLog
-    from app.scenarios.scenario_state_model import ScenarioState
-
 import enum
 from typing import Optional
-from sqlalchemy import String, ForeignKey, Enum
+from sqlalchemy import String, Text, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base_class import Base
-
+from app.scenarios.scenario_state_model import ScenarioState
 
 class ReportStatusEnum(str, enum.Enum):
     DRAFT = "Draft"
@@ -33,7 +31,7 @@ class Report(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     report_type: Mapped[str] = mapped_column(String(100), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    summary: Mapped[Optional[str]] = mapped_column(String(1000))
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[ReportStatusEnum] = mapped_column(Enum(ReportStatusEnum), default=ReportStatusEnum.DRAFT, nullable=False)
     
     generated_by_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("employees.id"))

@@ -7,7 +7,6 @@ import {
   Wrench,
   FileBarChart2,
   ShieldAlert,
-  Search,
   Settings,
   UserCircle,
   PlaySquare,
@@ -77,12 +76,6 @@ export const NAVIGATION_CONFIG: NavGroup[] = [
         label: 'Scenarios',
         href: ROUTES.SCENARIOS,
         icon: ShieldAlert,
-      },
-      {
-        id: 'investigation',
-        label: 'Investigation',
-        href: ROUTES.INVESTIGATION,
-        icon: Search,
       },
       {
         id: 'replay',

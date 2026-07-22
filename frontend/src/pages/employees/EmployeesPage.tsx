@@ -40,8 +40,12 @@ const columns: Column<Employee>[] = [
   { key: 'clearance_level', header: 'Clearance' }
 ]
 
+import { EmployeeDetailsDialog } from '@/components/common/dialog/EmployeeDetailsDialog'
+import { useState } from 'react'
+
 export function EmployeesPage() {
   const { data, isLoading, isError, refetch } = useEmployees()
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
   return (
     <div className="flex-1 space-y-6">
@@ -72,9 +76,15 @@ export function EmployeesPage() {
             isLoading={isLoading}
             keyExtractor={(item) => item.id}
             emptyMessage="No employees found in the organization."
+            onRowClick={(item) => setSelectedEmployee(item)}
           />
         </InfoPanel>
       )}
+
+      <EmployeeDetailsDialog
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
+      />
     </div>
   )
 }

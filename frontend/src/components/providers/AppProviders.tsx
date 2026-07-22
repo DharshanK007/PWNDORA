@@ -14,6 +14,8 @@ import { env } from '@/config/env'
 // All global providers composed in a single wrapper.
 // Order matters: Router → Query → Theme → Auth → ErrorBoundary
 
+import { LabSessionProvider } from '@/contexts/LabSessionContext'
+
 interface AppProvidersProps {
   children: ReactNode
 }
@@ -24,12 +26,14 @@ export function AppProviders({ children }: AppProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system">
           <AuthProvider>
-            <SearchProvider>
-              <AppErrorBoundary>
-              {children}
-              <Toaster richColors position="top-right" />
-              </AppErrorBoundary>
-            </SearchProvider>
+            <LabSessionProvider>
+              <SearchProvider>
+                <AppErrorBoundary>
+                {children}
+                <Toaster richColors position="top-right" />
+                </AppErrorBoundary>
+              </SearchProvider>
+            </LabSessionProvider>
           </AuthProvider>
         </ThemeProvider>
         {env.IS_DEV && <ReactQueryDevtools initialIsOpen={false} />}

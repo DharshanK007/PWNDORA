@@ -6,6 +6,7 @@ export interface Report {
   title: string
   type: string
   status: string
+  summary?: string
   generated_by?: string
   created_at: string
 }

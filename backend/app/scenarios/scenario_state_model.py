@@ -7,7 +7,7 @@ from app.db.base_class import Base
 class ScenarioState(Base):
     __tablename__ = "scenario_states"
 
-    scenario_id: Mapped[str] = mapped_column(String(36), ForeignKey("scenarios.id"), nullable=False)
+    scenario_id: Mapped[str] = mapped_column(String(36), nullable=False)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -29,5 +29,3 @@ class ScenarioState(Base):
     
     metadata_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
-    scenario = relationship("Scenario", back_populates="states")
-    user = relationship("User", back_populates="scenario_states")

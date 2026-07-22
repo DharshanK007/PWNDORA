@@ -52,7 +52,7 @@ export function ScenarioDetailsPage() {
     launchScenario(scenario.id, {
       onSuccess: () => {
         setShowLaunchDialog(false)
-        navigate(`/investigation?scenarioId=${scenario.id}`)
+        navigate('/dashboard')
       },
       onError: (err) => {
         console.error('Failed to launch scenario:', err)
