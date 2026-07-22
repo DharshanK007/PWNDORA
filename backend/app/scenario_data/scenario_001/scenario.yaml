@@ -1,23 +1,114 @@
 id: "scenario_001"
-name: "Production Line Firmware Failure"
-category: "Configuration"
-difficulty: "Beginner"
-required_role: "Engineer"
-business_context: "Production Line 2 has stopped responding after a failed firmware deployment. Investigate the root cause."
+name: "Operation Phantom Firmware"
+category: "Multi-Vector Attack Chain"
+difficulty: "Intermediate"
+required_role: "Analyst"
+business_context: >
+  A routine firmware deployment on Production Line 2 failed.
+  Initial triage suggests a configuration error, but deeper
+  investigation reveals a coordinated insider threat exploiting
+  multiple enterprise weaknesses.
+
 stages:
   - id: 1
-    objective: "Read the maintenance ticket."
-    required_action: "Fetch clue ticket_001"
+    objective: "Discover the failed deployment ticket"
+    business_module: "maintenance"
+    target_endpoint: "GET /api/v1/tickets"
+    flaw_mode: "option_a"
+    vulnerability_category: "information_disclosure"
+    required_action: "view_ticket_with_sensitive_log"
+    capability_gained: "knowledge_of_deployment_failure"
+    evidence:
+      - type: "Ticket"
+        name: "ticket_fw_failure.txt"
+        content: "Priority: Critical..."
     next_stage: 2
+    cvss:
+      attack_vector: "Network"
+      attack_complexity: "Low"
+      privileges_required: "Low"
+      user_interaction: "None"
+      scope: "Unchanged"
+      confidentiality: "Low"
+      integrity: "None"
+      availability: "None"
+    owasp_risk_factors:
+      ease_of_discovery: 7
+      ease_of_exploit: 7
+      awareness: 6
+      intrusion_detection: 8
+
   - id: 2
-    objective: "Analyze deployment log."
-    required_action: "Fetch clue log_001"
+    objective: "Access cross-department employee records"
+    business_module: "employees"
+    target_endpoint: "GET /api/v1/employees/{id}"
+    flaw_mode: "option_a"
+    vulnerability_category: "authorization"
+    required_action: "idor_cross_department"
+    capability_gained: "access_to_engineering_personnel"
+    evidence:
+      - type: "Employee Note"
+        name: "engineer_profile.json"
+    owasp: "A01:2021 - Broken Access Control"
+    mitre: "T1078 - Valid Accounts"
     next_stage: 3
+    cvss:
+      attack_vector: "Network"
+      attack_complexity: "Low"
+      privileges_required: "Low"
+      user_interaction: "None"
+      scope: "Unchanged"
+      confidentiality: "High"
+      integrity: "None"
+      availability: "None"
+
   - id: 3
-    objective: "Find leaked config backup."
-    required_action: "Fetch clue config_backup"
+    objective: "Find leaked credentials in device config"
+    business_module: "assets"
+    target_endpoint: "GET /api/v1/devices/{id}"
+    flaw_mode: "option_a"
+    vulnerability_category: "configuration"
+    required_action: "read_device_config_with_creds"
+    capability_gained: "default_admin_credentials"
+    evidence:
+      - type: "Configuration"
+        name: "plc_config_backup.json"
+    owasp: "A05:2021 - Security Misconfiguration"
+    mitre: "T1552 - Unsecured Credentials"
     next_stage: 4
+    cvss:
+      attack_vector: "Network"
+      attack_complexity: "Low"
+      privileges_required: "Low"
+      user_interaction: "None"
+      scope: "Unchanged"
+      confidentiality: "High"
+      integrity: "None"
+      availability: "None"
+    owasp_risk_factors:
+      ease_of_discovery: 5
+      ease_of_exploit: 9
+
   - id: 4
-    objective: "Exploit vulnerable admin endpoint."
-    required_action: "POST /auth/login with admin"
+    objective: "Exploit login enumeration to confirm admin account"
+    business_module: "authentication"
+    target_endpoint: "POST /api/v1/auth/login"
+    flaw_mode: "option_b"
+    vulnerability_category: "authentication"
+    required_action: "login_enumeration"
+    capability_gained: "admin_access"
+    evidence:
+      - type: "API Response"
+        name: "enumeration_proof.json"
+    owasp: "A07:2021 - Identification and Authentication Failures"
+    mitre: "T1110 - Brute Force"
     next_stage: null
+    cvss:
+      attack_vector: "Network"
+      attack_complexity: "Low"
+      privileges_required: "None"
+      user_interaction: "None"
+      scope: "Changed"
+      confidentiality: "High"
+      integrity: "High"
+      availability: "High"

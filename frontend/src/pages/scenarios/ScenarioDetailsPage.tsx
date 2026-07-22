@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, Target, Play, CheckCircle2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -21,9 +21,11 @@ export function ScenarioDetailsPage() {
   const [showLaunchDialog, setShowLaunchDialog] = useState(false)
 
   // Track as recently viewed if we successfully loaded the scenario
-  if (scenario) {
-    addRecent(scenario.id)
-  }
+  useEffect(() => {
+    if (scenario) {
+      addRecent(scenario.id)
+    }
+  }, [scenario, addRecent])
 
   if (isScenarioLoading || isProgressLoading) {
     return (

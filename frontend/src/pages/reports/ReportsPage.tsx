@@ -6,6 +6,8 @@ import { useReports } from '@/hooks/api/useReports'
 import type { Report } from '@/services/reports'
 import { EmptyModule } from '@/components/common/EmptyModule'
 import { InfoPanel } from '@/components/common/InfoPanel'
+import { ReportViewerDialog } from '@/components/common/dialog/ReportViewerDialog'
+import { useState } from 'react'
 
 const columns: Column<Report>[] = [
   { key: 'title', header: 'Report Name', className: 'font-medium' },
@@ -32,6 +34,7 @@ const columns: Column<Report>[] = [
 
 export function ReportsPage() {
   const { data, isLoading, isError, refetch } = useReports()
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null)
 
   return (
     <div className="flex-1 space-y-6">
@@ -62,8 +65,18 @@ export function ReportsPage() {
             isLoading={isLoading}
             keyExtractor={(item) => item.id}
             emptyMessage="No reports have been generated yet."
+            onRowClick={(item) => setSelectedReport(item)}
           />
         </InfoPanel>
+      )}
+
+      {selectedReport && (
+        <ReportViewerDialog
+          isOpen={!!selectedReport}
+          title={selectedReport.title}
+          content={selectedReport.summary || 'No content available for this report.'}
+          onClose={() => setSelectedReport(null)}
+        />
       )}
     </div>
   )

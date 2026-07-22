@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
-import { useSearchParams, Navigate } from 'react-router-dom'
+import { useSearchParams, Navigate, Link } from 'react-router-dom'
 import { useScenarios } from '@/hooks/api/useScenarios'
-import { useCurrentSession, useWorkspace } from '@/hooks/api/useSession'
+import { useCurrentSession, useWorkspace, usePerformAction } from '@/hooks/api/useSession'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 
 // Components
@@ -24,6 +24,7 @@ const SIMULATED_EVIDENCE: Record<string, Evidence[]> = {
     { id: 'ev_2', name: 'deploy_log_001.log', type: 'log', size: 4096, source: 'Deploy Server', addedAt: new Date().toISOString(), content: '2026-07-21 08:00:01 INFO Starting firmware deployment to Line 2\n2026-07-21 08:00:15 INFO Uploading binary...\n2026-07-21 08:00:16 ERROR Checksum mismatch! Deployment aborted.\n2026-07-21 08:00:16 ERROR Fallback to config_backup.json failed (Permission Denied).' },
     { id: 'ev_3', name: 'config_backup.json', type: 'json', size: 2048, source: 'File Server', addedAt: new Date().toISOString(), content: '{\n  "admin_endpoint": "/auth/login",\n  "default_user": "admin",\n  "default_pass": "admin123"\n}' },
     { id: 'ev_4', name: 'network_capture.pcap', type: 'pcap', size: 1548288, source: 'Edge Router', addedAt: new Date().toISOString() },
+    { id: 'ev_5', name: 'engineer_profile.json', type: 'json', size: 512, source: 'HR System API', addedAt: new Date().toISOString(), content: '{\n  "id": "eng_882",\n  "department": "Engineering",\n  "access_level": "Tier 2",\n  "managed_devices": ["PLC_Line2"]\n}' },
   ]
 }
 
@@ -44,6 +45,7 @@ export function InvestigationWorkspace() {
   
   const { data: session, isLoading: isLoadingSession } = useCurrentSession(scenarioId || '')
   const { workspace, updateWorkspace, addTimelineEvent, resetWorkspace } = useWorkspace(scenarioId || '')
+  const performAction = usePerformAction()
 
   // Effect to add initial timeline event
   useEffect(() => {
@@ -55,7 +57,25 @@ export function InvestigationWorkspace() {
     }
   }, [session, workspace.timeline.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!scenarioId) return <Navigate to="/scenarios" replace />
+  if (!scenarioId) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#0a0a0a] text-slate-400">
+        <div className="w-16 h-16 border-2 border-dashed border-slate-700 rounded-lg mb-4 flex items-center justify-center">
+          <span className="text-2xl">🔍</span>
+        </div>
+        <h2 className="text-xl font-semibold text-slate-200 mb-2">No Active Investigation</h2>
+        <p className="text-sm mb-6 max-w-md text-center">
+          You haven't selected a scenario to investigate. Please go to the Scenario Catalog, select a scenario, and launch it to begin an investigation session.
+        </p>
+        <Link 
+          to="/scenarios"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors text-sm font-medium"
+        >
+          Go to Scenario Catalog
+        </Link>
+      </div>
+    )
+  }
   if (isLoadingScenarios || isLoadingSession) return <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a]"><LoadingSpinner /></div>
   if (!scenario || !session) return <Navigate to="/scenarios" replace /> // Missing scenario or session not started
 
@@ -84,6 +104,17 @@ export function InvestigationWorkspace() {
               onSelect={(id) => {
                 updateWorkspace({ selectedEvidenceId: id })
                 addTimelineEvent({ type: 'INFO', message: `Opened evidence: ${evidence.find(e => e.id === id)?.name}` })
+                
+                // Trigger backend action if relevant
+                if (id === 'ev_1') {
+                  performAction.mutate({ scenarioId: scenarioId!, action: 'view_ticket_with_sensitive_log' })
+                } else if (id === 'ev_5') {
+                  performAction.mutate({ scenarioId: scenarioId!, action: 'idor_cross_department' })
+                } else if (id === 'ev_3') {
+                  performAction.mutate({ scenarioId: scenarioId!, action: 'read_device_config_with_creds' })
+                } else if (id === 'ev_4') {
+                  performAction.mutate({ scenarioId: scenarioId!, action: 'login_enumeration' })
+                }
               }}
             />
           </div>

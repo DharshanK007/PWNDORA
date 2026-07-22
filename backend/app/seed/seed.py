@@ -15,6 +15,7 @@ from app.models import (
     Device, DeviceStatusEnum, MaintenanceTicket, PriorityEnum, TicketStatusEnum,
     Inventory, Report, Notification, ActivityLog
 )
+from app.scenarios.scenario_model import Scenario
 
 fake = Faker()
 
@@ -159,15 +160,15 @@ def seed_db():
             db.add(inv)
 
         # Seed Reports (20)
-        for i in range(20):
-            rep = Report(
-                title=f"Monthly {fake.word()} Report",
-                report_type=random.choice(["Production", "Maintenance", "Inventory"]),
-                file_path=f"/reports/{fake.uuid4()}.pdf",
-                summary=fake.paragraph(),
-                generated_by_id=random.choice(employees).id
-            )
-            db.add(rep)
+        # for i in range(20):
+        #     rep = Report(
+        #         title=f"Monthly {fake.word()} Report",
+        #         report_type=random.choice(["Production", "Maintenance", "Inventory"]),
+        #         file_path=f"/reports/{fake.uuid4()}.pdf",
+        #         summary=fake.paragraph(),
+        #         generated_by_id=random.choice(employees).id
+        #     )
+        #     db.add(rep)
 
         # Seed Notifications (30)
         for i in range(30):
@@ -189,7 +190,17 @@ def seed_db():
                 ip_address=fake.ipv4_private()
             )
             log.created_at = fake.date_time_between(start_date='-30d', end_date='now')
-            db.add(log)
+        # Seed Scenarios
+        scenario_1 = Scenario(
+            id="scenario_001",
+            title="Operation Phantom Firmware",
+            description="A routine firmware deployment on Production Line 2 failed...",
+            business_context="Initial triage suggests a configuration error...",
+            difficulty="Intermediate",
+            category="Multi-Vector Attack Chain",
+            expected_learning_objectives=["Identify authorization flaws", "Find leaked credentials"]
+        )
+        db.add(scenario_1)
 
         db.commit()
         print("Database seeded successfully!")

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .report import Report
     from .notification import Notification
     from .activity_log import ActivityLog
+    from app.scenarios.scenario_state_model import ScenarioState
 
 import enum
 from typing import Optional
@@ -36,5 +37,7 @@ class Report(Base):
     status: Mapped[ReportStatusEnum] = mapped_column(Enum(ReportStatusEnum), default=ReportStatusEnum.DRAFT, nullable=False)
     
     generated_by_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("employees.id"))
+    scenario_state_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("scenario_states.id"), nullable=True)
     
     generated_by: Mapped[Optional["Employee"]] = relationship(back_populates="reports_generated", lazy="selectin")
+    scenario_state: Mapped[Optional["ScenarioState"]] = relationship(lazy="selectin")

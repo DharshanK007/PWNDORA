@@ -3,8 +3,10 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { ThemeProvider } from '@/contexts/ThemeContext'
-import { ErrorBoundary } from '@/components/feedback/ErrorBoundary'
+import { ThemeProvider } from '@/contexts/theme/ThemeContext'
+import { SearchProvider } from '@/contexts/search/SearchContext'
+import { AppErrorBoundary } from '@/components/error/AppErrorBoundary'
+import { Toaster } from 'sonner'
 import { queryClient } from '@/config/query'
 import { env } from '@/config/env'
 
@@ -22,9 +24,12 @@ export function AppProviders({ children }: AppProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system">
           <AuthProvider>
-            <ErrorBoundary>
+            <SearchProvider>
+              <AppErrorBoundary>
               {children}
-            </ErrorBoundary>
+              <Toaster richColors position="top-right" />
+              </AppErrorBoundary>
+            </SearchProvider>
           </AuthProvider>
         </ThemeProvider>
         {env.IS_DEV && <ReactQueryDevtools initialIsOpen={false} />}

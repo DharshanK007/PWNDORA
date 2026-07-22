@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from .activity_log import ActivityLog
 
 import enum
-from typing import Optional, List
-from sqlalchemy import String, Boolean, Enum
+from typing import Optional, List, Any
+from sqlalchemy import String, Boolean, Enum, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base_class import Base
 
@@ -31,6 +31,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[RoleEnum] = mapped_column(Enum(RoleEnum), default=RoleEnum.EMPLOYEE, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean(), default=True)
+    capabilities: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     employee: Mapped[Optional["Employee"]] = relationship(back_populates="user", uselist=False, lazy="selectin")
     activity_logs: Mapped[List["ActivityLog"]] = relationship(back_populates="user", lazy="selectin")

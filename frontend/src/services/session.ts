@@ -14,5 +14,10 @@ export const sessionService = {
   getSessionState: async (scenarioId: string): Promise<SessionStateResponse> => {
     const { data } = await api.get(`/scenarios/${scenarioId}/state`)
     return data
+  },
+  
+  performAction: async (scenarioId: string, action: string): Promise<SessionStateResponse> => {
+    const { data } = await api.post(`/scenarios/${scenarioId}/action`, { action })
+    return data.state
   }
 }

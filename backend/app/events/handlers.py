@@ -56,6 +56,24 @@ def workflow_history_handler(event: BaseEvent):
         finally:
             db.close()
 
+def scenario_report_handler(event: BaseEvent):
+    import sys
+    import os
+    import importlib.util
+    
+    ai_service_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../ai-service/app/report_generator.py"))
+        
+    try:
+        spec = importlib.util.spec_from_file_location("ai_report_generator", ai_service_path)
+        report_gen = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(report_gen)
+        
+        if event.event_name == "ScenarioCompleted":
+            report_gen.generate_scenario_report(event.entity_id, event.actor)
+    except Exception as e:
+        logger.error(f"Failed to trigger scenario report generator: {e}")
+
+
 def register_all_handlers():
     from app.events.event_registry import registry
     from app.events import events
@@ -67,5 +85,7 @@ def register_all_handlers():
             registry.register(name, audit_log_handler)
             registry.register(name, notification_handler)
             registry.register(name, workflow_history_handler)
+            
+    registry.register("ScenarioCompleted", scenario_report_handler)
 
 register_all_handlers()

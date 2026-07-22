@@ -38,6 +38,17 @@ export const useEndSession = () => {
   })
 }
 
+export const usePerformAction = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ scenarioId, action }: { scenarioId: string, action: string }) => 
+      sessionService.performAction(scenarioId, action),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SCENARIOS, variables.scenarioId, 'session'] })
+    }
+  })
+}
+
 const DEFAULT_WORKSPACE: Omit<WorkspaceState, 'scenarioId'> = {
   layout: {
     sizes: { left: 25, right: 25, bottom: 30 },

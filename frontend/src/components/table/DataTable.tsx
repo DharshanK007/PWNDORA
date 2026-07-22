@@ -17,6 +17,7 @@ interface DataTableProps<T> {
   emptyMessage?: string
   keyExtractor: (item: T) => string | number
   onSort?: (key: string, direction: 'asc' | 'desc') => void
+  onRowClick?: (item: T) => void
 }
 
 export function DataTable<T>({
@@ -25,7 +26,8 @@ export function DataTable<T>({
   isLoading,
   emptyMessage = 'No data available',
   keyExtractor,
-  onSort
+  onSort,
+  onRowClick
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -79,7 +81,11 @@ export function DataTable<T>({
             </tr>
           ) : (
             data.map((item) => (
-              <tr key={keyExtractor(item)} className="transition-colors hover:bg-muted/30">
+              <tr 
+                key={keyExtractor(item)} 
+                className={cn('transition-colors hover:bg-muted/30', onRowClick && 'cursor-pointer')}
+                onClick={() => onRowClick && onRowClick(item)}
+              >
                 {columns.map((col) => (
                   <td key={col.key} className={cn('px-4 py-3 whitespace-nowrap', col.className)}>
                     {col.cell ? col.cell(item) : String((item as Record<string, unknown>)[col.key] ?? '')}

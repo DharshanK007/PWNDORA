@@ -35,3 +35,10 @@ class ReportArchived(BaseEvent): pass
 class LoginEvent(BaseEvent): pass
 class FailedLoginEvent(BaseEvent): pass
 class LogoutEvent(BaseEvent): pass
+
+# Scenario Events
+class StageAdvanced(BaseEvent): pass
+class ScenarioCompleted(BaseEvent): pass
+class ClueUnlocked(BaseEvent): pass
+class FlagCaptured(BaseEvent): pass
+

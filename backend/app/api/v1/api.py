@@ -17,7 +17,11 @@ from app.api.v1.endpoints import (
     reports,
     activity_logs,
     audit,
-    timeline
+    timeline,
+    progress,
+    attack_graph,
+    report_drafts,
+    analytics
 )
 
 api_router = APIRouter()
@@ -35,6 +39,10 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(activity_logs.router, prefix="/activity_logs", tags=["activity_logs"])
 api_router.include_router(audit.router, prefix="/audit", tags=["audit"])
 api_router.include_router(timeline.router, prefix="/timeline", tags=["timeline"])
+api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
+api_router.include_router(attack_graph.router, prefix="/attack-graph", tags=["attack_graph"])
+api_router.include_router(report_drafts.router, prefix="/reports/draft", tags=["report_drafts"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 

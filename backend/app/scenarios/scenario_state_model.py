@@ -22,6 +22,11 @@ class ScenarioState(Base):
     last_resource_opened: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     last_checkpoint: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
+    completed_stages: Mapped[Optional[list[int]]] = mapped_column(JSON, default=list, nullable=True)
+    flags_captured: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(JSON, default=list, nullable=True)
+    total_stages: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    vulnerability_graph: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(JSON, default=list, nullable=True)
+    
     metadata_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     scenario = relationship("Scenario", back_populates="states")
