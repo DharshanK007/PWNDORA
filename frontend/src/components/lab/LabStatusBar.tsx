@@ -1,75 +1,87 @@
 import { useState, useEffect, useRef } from 'react'
-import { Shield, FolderOpen, CheckCircle2, ChevronRight, Flag, Lock, Sparkles, Clock, Trophy } from 'lucide-react'
+import { Shield, FolderOpen, CheckCircle2, ChevronRight, Flag, Lock, Sparkles, Clock, Trophy, RotateCcw, Target } from 'lucide-react'
 import { useLabSession } from '@/contexts/LabSessionContext'
 import { EvidenceDrawer } from './EvidenceDrawer'
 import { PostLabAssessmentDialog } from './PostLabAssessmentDialog'
+import { MissionBriefingDialog } from '@/components/common/dialog/MissionBriefingDialog'
 import api from '@/lib/axios'
+import confetti from 'canvas-confetti'
 
-const STAGE_TITLES: Record<number, string> = {
-  1: 'Stage 1: Read Device Record for Production Line 2 in Assets',
-  2: 'Stage 2: Access Marcus Chen Employee Profile in Employees',
-  3: 'Stage 3: Perform Injection Search for Deployment Logs',
-  4: 'Stage 4: Escalate Session Role & Execute Firmware Push',
-}
-
-const STAGES_CONFIG = [
-  {
-    id: 1,
-    title: 'Asset Triage',
-    vuln: 'Asset Inventory',
-    target: 'Line 2 Controller',
-    flagLabel: 'Flag 1: Asset Discovered',
-  },
-  {
-    id: 2,
-    title: 'Access Control',
-    vuln: 'OWASP A01: IDOR',
-    target: 'Marcus Chen Profile',
-    flagLabel: 'Flag 2: Engineer Leaked',
-  },
-  {
-    id: 3,
-    title: 'Injection Leak',
-    vuln: 'OWASP A03: Injection',
-    target: 'Deployment Audit Logs',
-    flagLabel: 'Flag 3: Audit Logs Exposed',
-  },
-  {
-    id: 4,
-    title: 'Privilege Escalation',
-    vuln: 'OWASP A07: Session Esc',
-    target: 'Firmware Push Override',
-    flagLabel: 'Flag 4: Root Compromised',
-  },
-]
+// ─────────────────────────────────────────────────────────────────────────────
+// LabStatusBar — fully data-driven from the active scenario YAML.
+// No hardcoded stage arrays. Works for any scenario loaded by the engine.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const LabStatusBar: React.FC = () => {
   const { isActive, currentStage, completedStages, status, scenario, state, refetch } = useLabSession()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isAssessmentOpen, setIsAssessmentOpen] = useState(false)
   const [showCompletionPopup, setShowCompletionPopup] = useState(false)
-  
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false)
+
   const [timeLeft, setTimeLeft] = useState<number>(45 * 60)
   const [showBanner, setShowBanner] = useState(true)
 
-  
+  // Derive stages from the live scenario config — works for any scenario
+  const stages = scenario?.stages ?? []
+  const totalStages = stages.length
+
   const isCompleted = status === 'COMPLETED'
-  
+
+  // Track transitions to detect when the final stage is captured live
   const prevCompletedCount = useRef(completedStages.length)
-  
-  // Trigger Big Pop Up when the 4th stage is captured live
+
   useEffect(() => {
-    if (completedStages.length === 4 && prevCompletedCount.current < 4) {
-      setShowCompletionPopup(true)
+    if (completedStages.length === totalStages && totalStages > 0 && prevCompletedCount.current < totalStages) {
+      
+      const fireVictory = () => {
+        setShowCompletionPopup(true)
+        const duration = 3000;
+        const end = Date.now() + duration;
+        const frame = () => {
+          confetti({
+            particleCount: 5,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: ['#10b981', '#3b82f6', '#06b6d4'],
+            zIndex: 99999
+          });
+          confetti({
+            particleCount: 5,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: ['#10b981', '#3b82f6', '#06b6d4'],
+            zIndex: 99999
+          });
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        };
+        frame();
+      }
+
+      // Dynamic check: wait until user closes any active sliding panels or dialogs
+      const checkAndShow = () => {
+        const openDialogs = document.querySelectorAll('dialog[open]')
+        if (openDialogs.length > 0) {
+          setTimeout(checkAndShow, 500)
+        } else {
+          fireVictory()
+        }
+      }
+      
+      checkAndShow()
     }
     prevCompletedCount.current = completedStages.length
-  }, [completedStages.length])
-  
-  // Timer Logic
+  }, [completedStages.length, totalStages])
+
+  // Timer Logic — 45 minutes from session start
   useEffect(() => {
     if (isActive && state?.started_at && !isCompleted) {
       const start = new Date(state.started_at).getTime()
-      const maxTime = 45 * 60 * 1000 // 45 mins
+      const maxTime = 45 * 60 * 1000
       const interval = setInterval(() => {
         const now = Date.now()
         const elapsed = now - start
@@ -83,8 +95,8 @@ export const LabStatusBar: React.FC = () => {
       return () => clearInterval(interval)
     }
   }, [isActive, state?.started_at, isCompleted])
-  
-  // Auto-hide banner after 5s when completed
+
+  // Auto-hide status bar 5s after completion
   useEffect(() => {
     if (isCompleted) {
       const t = setTimeout(() => setShowBanner(false), 5000)
@@ -93,12 +105,15 @@ export const LabStatusBar: React.FC = () => {
   }, [isCompleted])
 
   if (!isActive) return null
-  const displayStage = isCompleted ? 4 : Math.min(Math.max(currentStage, 1), 4)
 
-  // Calculate percentage of progress line connecting node centers (0% to 100%)
-  const progressPercent = isCompleted
+  const displayStage = isCompleted ? totalStages : Math.min(Math.max(currentStage, 1), totalStages)
+
+  // Progress line percentage connecting node centers
+  const progressPercent = totalStages <= 1
+    ? (isCompleted ? 100 : 0)
+    : isCompleted
     ? 100
-    : Math.min(100, Math.max(0, ((displayStage - 1) / (STAGES_CONFIG.length - 1)) * 100))
+    : Math.min(100, Math.max(0, ((displayStage - 1) / (totalStages - 1)) * 100))
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -106,154 +121,193 @@ export const LabStatusBar: React.FC = () => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+  // Build the current stage label from scenario data
+  const currentStageData = stages.find(s => s.id === displayStage)
+  const currentStageName = currentStageData?.objective ?? `Stage ${displayStage}`
+  const scenarioName = scenario?.name ?? 'NeoFactory Cyber Range'
+
+  // Build completed stage objects for the assessment dialog
+  const completedStageObjects = stages.filter(s => completedStages.includes(s.id))
+
   return (
     <>
       {(!isCompleted || showBanner) && (
-      <div className={`w-full bg-card/95 border-b border-border shadow-md divide-y divide-border/40 transition-all duration-700 ${isCompleted && !showBanner ? 'opacity-0 h-0 overflow-hidden' : 'animate-fade-in'}`}>
-        {/* Top Info Strip */}
-        <div className="bg-gradient-to-r from-primary/15 via-primary/10 to-background px-4 py-2 flex items-center justify-between text-xs sm:text-sm">
-          {/* Left: Status & Stage */}
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/20 text-primary font-semibold shrink-0">
-              <Shield className="h-3.5 w-3.5" />
-              <span>{isCompleted ? 'LAB COMPLETED' : 'STAGE ' + displayStage + ' / 4'}</span>
-            </div>
-
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-medium text-foreground truncate">
-                {scenario?.name || 'Operation Phantom Firmware'}
-              </span>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 hidden md:inline" />
-              <span className="text-muted-foreground truncate hidden md:inline font-mono text-xs">
-                {isCompleted ? 'Scenario Investigation Complete!' : STAGE_TITLES[displayStage]}
-              </span>
-            </div>
-          </div>
-
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {!isCompleted && (
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-xs font-semibold shadow-xs ${
-                timeLeft < 300 ? 'bg-destructive/10 text-destructive border border-destructive/20 animate-pulse' : 'bg-muted/50 text-foreground border border-border'
-              }`}>
-                <Clock className="h-3.5 w-3.5" />
-                {formatTime(timeLeft)}
+        <div className={`w-full bg-card/95 border-b border-border shadow-md divide-y divide-border/40 transition-all duration-700 ${isCompleted && !showBanner ? 'opacity-0 h-0 overflow-hidden' : 'animate-fade-in'}`}>
+          {/* Top Info Strip */}
+          <div className="bg-gradient-to-r from-primary/15 via-primary/10 to-background px-4 py-2 flex items-center justify-between text-xs sm:text-sm">
+            {/* Left: Status & Stage */}
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/20 text-primary font-semibold shrink-0">
+                <Shield className="h-3.5 w-3.5" />
+                <span>{isCompleted ? 'LAB COMPLETED' : `STAGE ${displayStage} / ${totalStages}`}</span>
               </div>
-            )}
 
-            {isCompleted && (
-              <span className="flex items-center gap-1 text-emerald-500 font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-xs">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                100% Score
-              </span>
-            )}
+              <div className="flex items-center gap-2 truncate">
+                <span className="font-medium text-foreground truncate">
+                  {scenarioName}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 hidden md:inline" />
+                <span className="text-muted-foreground truncate hidden md:inline font-mono text-xs">
+                  {isCompleted ? 'Scenario Investigation Complete!' : currentStageName}
+                </span>
+              </div>
+            </div>
 
-            {!isCompleted && completedStages.length > 0 && (
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {!isCompleted && (
+                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-xs font-semibold shadow-xs ${
+                  timeLeft < 300 ? 'bg-destructive/10 text-destructive border border-destructive/20 animate-pulse' : 'bg-muted/50 text-foreground border border-border'
+                }`}>
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatTime(timeLeft)}
+                </div>
+              )}
+
+              {isCompleted && (
+                <span className="flex items-center gap-1 text-emerald-500 font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-xs">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  100% Score
+                </span>
+              )}
+
+              {!isCompleted && (
+                <button
+                  onClick={async () => {
+                    if (state?.scenario_id && confirm('Are you sure you want to end this lab session? All progress will be lost.')) {
+                      try {
+                        await api.post(`/scenarios/${state.scenario_id}/reset`)
+                        refetch()
+                      } catch (e) {
+                        console.error(e)
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted border border-border hover:bg-muted/80 text-foreground font-medium text-xs shadow-xs transition-colors"
+                  title="End Lab Session"
+                >
+                  End Session
+                </button>
+              )}
+
+              {!isCompleted && completedStages.length > 0 && (
+                <button
+                  onClick={() => setIsAssessmentOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 text-destructive font-medium text-xs shadow-xs transition-colors"
+                >
+                  End & Evaluate
+                </button>
+              )}
+
               <button
-                onClick={() => setIsAssessmentOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 text-destructive font-medium text-xs shadow-xs transition-colors"
+                onClick={() => setIsBriefingOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-500 transition-colors font-medium text-xs shadow-xs"
               >
-                End Session
+                <Target className="h-3.5 w-3.5" />
+                <span>Mission Briefing</span>
               </button>
-            )}
 
-            <button
-              onClick={() => setIsDrawerOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-card border border-border hover:bg-muted text-foreground transition-colors font-medium text-xs shadow-xs"
-            >
-              <FolderOpen className="h-3.5 w-3.5 text-primary" />
-              <span>Evidence</span>
-            </button>
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-card border border-border hover:bg-muted text-foreground transition-colors font-medium text-xs shadow-xs"
+              >
+                <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                <span>Evidence</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Timeline Bar with Pinned Stage Flags */}
-        <div className="px-6 pt-10 pb-3 bg-muted/20 overflow-x-auto">
-          <div className="relative max-w-5xl mx-auto min-w-[650px]">
-            {/* Background Track Line - Positioned precisely behind 32px node center */}
-            <div className="absolute top-[16px] left-8 right-8 h-1.5 bg-border/60 rounded-full z-0" />
+          {/* Timeline Bar — fully driven from scenario.stages[] */}
+          <div className="px-6 pt-10 pb-3 bg-muted/20 overflow-x-auto">
+            <div className="relative max-w-5xl mx-auto" style={{ minWidth: `${Math.max(500, totalStages * 160)}px` }}>
+              {/* Background Track */}
+              <div className="absolute top-[16px] left-8 right-8 h-1.5 bg-border/60 rounded-full z-0" />
 
-            {/* Dynamic Progress Line - Positioned precisely behind 32px node center */}
-            <div
-              className="absolute top-[16px] left-8 h-1.5 bg-gradient-to-r from-primary via-emerald-500 to-cyan-400 rounded-full transition-all duration-700 ease-out z-0 shadow-xs"
-              style={{ width: `calc(${progressPercent}% * 0.94)` }}
-            />
+              {/* Dynamic Progress Line */}
+              <div
+                className="absolute top-[16px] left-8 h-1.5 bg-gradient-to-r from-primary via-emerald-500 to-cyan-400 rounded-full transition-all duration-700 ease-out z-0 shadow-xs"
+                style={{ width: `calc(${progressPercent}% * 0.94)` }}
+              />
 
-            {/* 4 Stage Nodes with Pinned Flags Above */}
-            <div className="relative z-10 flex items-center justify-between">
-              {STAGES_CONFIG.map((stage) => {
-                const stageDone = completedStages.includes(stage.id) || isCompleted || displayStage > stage.id
-                const isCurrent = !isCompleted && displayStage === stage.id
+              {/* Stage Nodes */}
+              <div className="relative z-10 flex items-center justify-between">
+                {stages.map((stage) => {
+                  const stageDone = completedStages.includes(stage.id) || isCompleted || displayStage > stage.id
+                  const isCurrent = !isCompleted && displayStage === stage.id
 
-                return (
-                  <div key={stage.id} className="flex flex-col items-center relative">
-                    {/* Pinned Flag Symbol (Icon Only - Large, Crisp, No Text, No Pill Overlaps) */}
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center justify-center">
-                      <Flag
-                        className={`transition-all duration-500 transform ${
+                  return (
+                    <div key={stage.id} className="flex flex-col items-center relative">
+                      {/* Flag icon above node */}
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center justify-center">
+                        <Flag
+                          className={`transition-all duration-500 transform ${
+                            stageDone
+                              ? 'h-6 w-6 text-emerald-400 fill-emerald-400 drop-shadow-md -translate-y-1'
+                              : isCurrent
+                              ? 'h-6 w-6 text-primary fill-primary drop-shadow-lg animate-bounce'
+                              : 'h-4 w-4 text-muted-foreground/30 fill-none'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Node Circle */}
+                      <div
+                        className={`h-8 w-8 rounded-full flex items-center justify-center transition-all duration-500 z-10 ${
                           stageDone
-                            ? 'h-6 w-6 text-emerald-400 fill-emerald-400 drop-shadow-md -translate-y-1'
+                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-500/20'
                             : isCurrent
-                            ? 'h-6 w-6 text-primary fill-primary drop-shadow-lg animate-bounce'
-                            : 'h-4 w-4 text-muted-foreground/30 fill-none'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Node Circle */}
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center transition-all duration-500 z-10 ${
-                        stageDone
-                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-500/20'
-                          : isCurrent
-                          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-primary/20 scale-105'
-                          : 'bg-card border-2 border-border text-muted-foreground'
-                      }`}
-                    >
-                      {stageDone ? (
-                        <CheckCircle2 className="h-4.5 w-4.5 stroke-[2.5]" />
-                      ) : isCurrent ? (
-                        <Sparkles className="h-4 w-4 animate-spin duration-3000" />
-                      ) : (
-                        <Lock className="h-4 w-4 text-muted-foreground/60" />
-                      )}
-                    </div>
-
-                    {/* Node Labels Below */}
-                    <div className="mt-2 text-center flex flex-col items-center">
-                      <span
-                        className={`text-xs font-semibold tracking-tight transition-colors ${
-                          stageDone ? 'text-foreground font-bold' : isCurrent ? 'text-primary font-bold' : 'text-muted-foreground/70'
+                            ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-primary/20 scale-105'
+                            : 'bg-card border-2 border-border text-muted-foreground'
                         }`}
                       >
-                        {stage.title}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-foreground/70 mt-0.5">
-                        {stage.vuln}
-                      </span>
+                        {stageDone ? (
+                          <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
+                        ) : isCurrent ? (
+                          <Sparkles className="h-4 w-4 animate-spin" style={{ animationDuration: '3s' }} />
+                        ) : (
+                          <Lock className="h-4 w-4 text-muted-foreground/60" />
+                        )}
+                      </div>
+
+                      {/* Labels Below */}
+                      <div className="mt-2 text-center flex flex-col items-center max-w-[110px]">
+                        <span
+                          className={`text-[10px] font-semibold tracking-tight transition-colors leading-tight ${
+                            stageDone ? 'text-foreground font-bold' : isCurrent ? 'text-primary font-bold' : 'text-muted-foreground/70'
+                          }`}
+                        >
+                          Stage {stage.id}
+                        </span>
+                        <span className="text-[9px] font-mono text-muted-foreground/70 mt-0.5 leading-tight text-center">
+                          {stage.owasp?.split(' ')[0] ?? stage.vulnerability_category ?? ''}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
+      {/* Mission Accomplished Popup */}
       {showCompletionPopup && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in zoom-in duration-500">
           <div className="bg-card w-full max-w-lg rounded-2xl border-2 border-emerald-500 shadow-[0_0_50px_-12px_rgba(16,185,129,0.5)] p-8 text-center flex flex-col items-center mx-4">
             <div className="h-24 w-24 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6 animate-pulse">
                <Trophy className="h-12 w-12 text-emerald-400" />
             </div>
-            <h2 className="text-3xl font-black text-foreground mb-4">Mission Accomplished!</h2>
-            <p className="text-muted-foreground mb-8 text-lg">You have successfully compromised all targets in Operation Phantom Firmware.</p>
-            <button 
+            <h2 className="text-3xl font-black text-foreground mb-2">Mission Accomplished!</h2>
+            <p className="text-sm font-mono text-emerald-400 mb-4">{scenarioName}</p>
+            <p className="text-muted-foreground mb-8 text-base">
+              You have successfully completed all {totalStages} stages. Time to author your professional assessment report.
+            </p>
+            <button
               onClick={() => {
                 setShowCompletionPopup(false)
                 setIsAssessmentOpen(true)
-              }} 
+              }}
               className="bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-emerald-600 transition-colors w-full shadow-lg hover:shadow-emerald-500/25"
             >
               Proceed to Vulnerability Assessment
@@ -263,19 +317,24 @@ export const LabStatusBar: React.FC = () => {
       )}
 
       <EvidenceDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
-      
-      <PostLabAssessmentDialog 
+
+      <MissionBriefingDialog
+        isOpen={isBriefingOpen}
+        onClose={() => setIsBriefingOpen(false)}
+        scenarioName={scenarioName}
+        stage={currentStageData}
+      />
+
+      <PostLabAssessmentDialog
         isOpen={isAssessmentOpen}
-        completedStages={STAGES_CONFIG.filter(s => completedStages.includes(s.id))}
+        completedStages={completedStageObjects}
         onCancel={() => setIsAssessmentOpen(false)}
         onSubmit={async () => {
           setIsAssessmentOpen(false)
           try {
-            // Ideally we could pass the answers to the backend, but the backend natively scores from YAML.
-            // For now we just end the session. 
-            if (scenario) {
-               await api.post(`/scenarios/${scenario.id}/action`, { action: 'end_session' })
-               refetch()
+            if (state?.scenario_id) {
+              await api.post(`/scenarios/${state.scenario_id}/action`, { action: 'end_session' })
+              refetch()
             }
           } catch (e) {
             console.error(e)

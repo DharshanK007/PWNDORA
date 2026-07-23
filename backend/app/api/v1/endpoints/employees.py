@@ -2,7 +2,7 @@ from app.schemas.response import ActionResponse
 from app.api.dependencies.query import QueryParameters, get_query_parameters
 from app.schemas.workflow_history import WorkflowHistoryResponse
 from typing import List, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -57,6 +57,50 @@ def update_employee(
     item = employee.update(db, db_obj=item, obj_in=item_in)
     return item
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SE Stage 4: Employee Export with Stolen Internal Service Key Bypass
+# ─────────────────────────────────────────────────────────────────────────────
+_SE_INTERNAL_SVC_KEY = "nf-internal-svc-x9k2p"
+
+@router.get("/export")
+def export_all_employees(
+    request: Request,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_user)
+) -> Any:
+    """
+    Full employee PII bulk export.
+    Intended to require Administrator role.
+    Deliberately contains a second authorization path that accepts the internal
+    service key stolen in SE Stage 3 — the real payoff of credential exfiltration.
+    """
+    svc_key_header = request.headers.get("X-Service-Key", "")
+    is_admin = hasattr(current_user, 'role') and str(current_user.role.value if hasattr(current_user.role, 'value') else current_user.role) in ["ADMINISTRATOR", "Administrator"]
+    key_bypass = _SE_INTERNAL_SVC_KEY in svc_key_header
+
+    if not is_admin and not key_bypass:
+        raise HTTPException(status_code=403, detail="Insufficient privileges. Admin access required.")
+
+    # Fetch full unredacted employee list
+    from app.api.dependencies.query import QueryParameters
+    from app.schemas.employee import EmployeeResponse
+    items = employee.get_multi(db, params=QueryParameters(skip=0, limit=10000))
+
+    # Outcome-based gate: export was reached by a non-admin using the stolen key
+    stolen_key_export = key_bypass and not is_admin
+    from app.scenarios.stage_gate import advance_if_stage_matches
+    advance_if_stage_matches(
+        db, "GET /api/v1/employees/export",
+        {"stolen_key_export": stolen_key_export}
+    )
+
+    return {
+        "items": items,
+        "total": len(items),
+        "export_method": "service_key_bypass" if stolen_key_export else "admin_authorized",
+        "classification": "SENSITIVE — Full Employee PII"
+    }
+
 @router.get("/{id}", response_model=EmployeeResponse)
 def read_employee(
     *,
@@ -73,7 +117,7 @@ def read_employee(
         
     # Stage Gate: Stage 2 IDOR check for Operation Phantom Firmware
     from app.scenarios.stage_gate import advance_if_stage_matches
-    advance_if_stage_matches(db, str(current_user.id), "GET /api/v1/employees/{id}", {"employee_id": str(id), "employee_name": f"{item.first_name} {item.last_name}"})
+    advance_if_stage_matches(db, "GET /api/v1/employees/{id}", {"employee_id": str(id), "employee_name": f"{item.first_name} {item.last_name}"})
     
     return item
 
@@ -117,6 +161,55 @@ def terminate_employee_endpoint(
     if not item:
         raise HTTPException(status_code=404, detail="Employee not found")
     return ActionResponse(success=True, message='Action successful', data=employee.terminate(db, db_obj=item))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SE Stage 4: Employee Export with Stolen Internal Service Key Bypass
+# ─────────────────────────────────────────────────────────────────────────────
+# The stolen internal API key from Stage 3. This is the exact key value the
+# learner reads out of /app/internal_secrets/svc_credentials.txt via path traversal.
+# It's not a magic string invented for this puzzle — it's the payoff of the
+# actual theft from the previous stage.
+_SE_INTERNAL_SVC_KEY = "nf-internal-svc-x9k2p"
+
+@router.get("/export")
+def export_all_employees(
+    request: Request,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_user)
+) -> Any:
+    """
+    Full employee PII bulk export.
+    Intended to require Administrator role.
+    Deliberately contains a second authorization path that accepts the internal
+    service key stolen in SE Stage 3 — the real payoff of credential exfiltration.
+    """
+    svc_key_header = request.headers.get("X-Service-Key", "")
+    is_admin = hasattr(current_user, 'role') and str(current_user.role.value if hasattr(current_user.role, 'value') else current_user.role) in ["ADMINISTRATOR", "Administrator"]
+    key_bypass = svc_key_header == _SE_INTERNAL_SVC_KEY
+
+    if not is_admin and not key_bypass:
+        raise HTTPException(status_code=403, detail="Insufficient privileges. Admin access required.")
+
+    # Fetch full unredacted employee list
+    from app.api.dependencies.query import QueryParameters
+    from app.schemas.employee import EmployeeResponse
+    items = employee.get_multi(db, params=QueryParameters(skip=0, limit=10000))
+
+    # Outcome-based gate: export was reached by a non-admin using the stolen key
+    stolen_key_export = key_bypass and not is_admin
+    from app.scenarios.stage_gate import advance_if_stage_matches
+    advance_if_stage_matches(
+        db, "GET /api/v1/employees/export",
+        {"stolen_key_export": stolen_key_export}
+    )
+
+    return {
+        "items": items,
+        "total": len(items),
+        "export_method": "service_key_bypass" if stolen_key_export else "admin_authorized",
+        "classification": "SENSITIVE — Full Employee PII"
+    }
 
 
 WORKFLOW_ACTIONS = {

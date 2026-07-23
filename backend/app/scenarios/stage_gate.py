@@ -9,9 +9,8 @@ from datetime import datetime, timezone
 
 transition_checker = TransitionRules()
 
-def get_in_progress_state_for_user(db: Session, user_id: str) -> Optional[ScenarioState]:
+def get_in_progress_state(db: Session) -> Optional[ScenarioState]:
     return db.query(ScenarioState).filter(
-        ScenarioState.user_id == str(user_id),
         ScenarioState.status == "IN_PROGRESS"
     ).order_by(ScenarioState.started_at.desc()).first()
 
@@ -23,8 +22,8 @@ def find_stage(scenario: Dict[str, Any], stage_id: int) -> Optional[Dict[str, An
             return stage
     return None
 
-def get_active_stage(db: Session, user_id: str, target_endpoint: str) -> Optional[Dict[str, Any]]:
-    state = get_in_progress_state_for_user(db, user_id)
+def get_active_stage(db: Session, target_endpoint: str) -> Optional[Dict[str, Any]]:
+    state = get_in_progress_state(db)
     if not state:
         return None
     scenario = manager.registry.get_scenario(state.scenario_id)
@@ -33,17 +32,19 @@ def get_active_stage(db: Session, user_id: str, target_endpoint: str) -> Optiona
         return current
     return None
 
-def advance_if_stage_matches(db: Session, user_id: str, target_endpoint: str, action_context: Dict[str, Any]):
-    state = get_in_progress_state_for_user(db, user_id)
+def advance_if_stage_matches(db: Session, target_endpoint: str, action_context: Dict[str, Any], user_id: str = None):
+    state = get_in_progress_state(db)
     if not state:
-        state = manager.start(db, "operation_phantom_firmware", str(user_id))
+        # No active session for this user — do nothing. Learner must start a scenario first.
+        return
 
     scenario = manager.registry.get_scenario(state.scenario_id)
     current = find_stage(scenario, state.current_stage)
     if not current or current.get("target_endpoint") != target_endpoint:
         return
 
-    if not transition_checker.check_transition(current, action_context):
+    # Outcome-based check: pass scenario_id so transition rules are scenario-scoped
+    if not transition_checker.check_transition(current, action_context, state.scenario_id):
         return
 
     # Advance stage

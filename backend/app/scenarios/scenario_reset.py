@@ -8,8 +8,7 @@ class ScenarioReset:
 
     def reset_scenario(self, db: Session, scenario_id: str, user_id: str):
         states = db.query(ScenarioState).filter(
-            ScenarioState.scenario_id == scenario_id,
-            ScenarioState.user_id == user_id
+            ScenarioState.scenario_id == scenario_id
         ).all()
         for state in states:
             state.status = "RESET"

@@ -1,9 +1,21 @@
 import { useState } from 'react'
 import { ShieldAlert, ChevronRight, Send, AlertTriangle } from 'lucide-react'
 
+// Stage objects are passed directly from scenario.stages[]
+// Both OPF and SE (and any future scenario) work because fields come from YAML
+interface ScenarioStage {
+  id: number
+  objective?: string
+  owasp?: string
+  mitre?: string
+  vulnerability_category?: string
+  enterprise_layer?: string
+  attack_surface?: string
+}
+
 interface PostLabAssessmentDialogProps {
   isOpen: boolean
-  completedStages: { id: number; title: string; vuln: string }[]
+  completedStages: ScenarioStage[]
   onSubmit: () => void
   onCancel: () => void
 }
@@ -142,7 +154,7 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
                 idx < currentStageIndex ? 'text-muted-foreground bg-muted/50' : 'text-muted-foreground/40'
               }`}
             >
-              Step {idx + 1}: {stage.title}
+              Step {idx + 1}: {stage.objective ?? `Stage ${stage.id}`}
             </div>
           ))}
         </div>
@@ -150,10 +162,10 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="mb-2">
             <h3 className="text-lg font-semibold text-primary mb-1">
-              Evaluating: {currentStage.title}
+              Evaluating: {currentStage.objective ?? `Stage ${currentStage.id}`}
             </h3>
             <span className="text-xs font-mono bg-muted px-2 py-1 rounded text-muted-foreground">
-              Vulnerability: {currentStage.vuln}
+              Vulnerability: {currentStage.owasp ?? currentStage.vulnerability_category ?? 'Unknown'}
             </span>
           </div>
 

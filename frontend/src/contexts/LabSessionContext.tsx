@@ -1,37 +1,78 @@
-﻿import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { scenariosService } from '@/services/scenarios'
-import type { ScenarioState, Scenario } from '@/types/scenario'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import api from '@/lib/axios'
 import { useAuth } from '@/hooks/useAuth'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface ScenarioStage {
+  id: number
+  title?: string
+  objective?: string
+  vulnerability_category?: string
+  owasp?: string
+  mitre?: string
+  cvss?: Record<string, string>
+  enterprise_layer?: string
+  attack_surface?: string
+  technical_mechanism?: string
+  discovery_surface?: string
+  next_stage?: number | null
+}
+
+interface ScenarioConfig {
+  id: string
+  name: string
+  business_context?: string
+  difficulty?: string
+  stages: ScenarioStage[]
+}
+
+interface ScenarioState {
+  id: string
+  scenario_id: string
+  user_id: string
+  current_stage: number
+  completed_stages: (string | number)[]
+  status: string
+  started_at: string
+  completed_at?: string | null
+}
 
 interface LabSessionContextType {
   isActive: boolean
   currentStage: number
   completedStages: (string | number)[]
   status: 'IN_PROGRESS' | 'COMPLETED' | 'NOT_STARTED' | string
-  scenario: Scenario | null
+  scenario: ScenarioConfig | null
   state: ScenarioState | null
   refetch: () => Promise<void>
 }
 
+// ─── Context ─────────────────────────────────────────────────────────────────
 const LabSessionContext = createContext<LabSessionContextType | undefined>(undefined)
-
-export const PILOT_SCENARIO_ID = 'operation_phantom_firmware'
 
 export const LabSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth()
   const [state, setState] = useState<ScenarioState | null>(null)
-  const [scenario, setScenario] = useState<Scenario | null>(null)
+  const [scenario, setScenario] = useState<ScenarioConfig | null>(null)
 
   const fetchSession = useCallback(async () => {
     if (!isAuthenticated) return
     try {
-      const [prog, scen] = await Promise.all([
-        scenariosService.getScenarioProgress(PILOT_SCENARIO_ID),
-        scenariosService.getScenario(PILOT_SCENARIO_ID).catch(() => null)
-      ])
-      setState(prog)
-      if (scen) setScenario(scen)
-    } catch (e) {
+      // Poll the generic active-state endpoint — returns whichever scenario is currently IN_PROGRESS
+      // or the most recently COMPLETED one. No hardcoded scenario ID.
+      const res = await api.get('/scenarios/active-state')
+      const data = res.data
+      if (data?.state) {
+        setState(data.state)
+      } else {
+        setState(null)
+      }
+      if (data?.scenario) {
+        setScenario(data.scenario)
+      } else {
+        setScenario(null)
+      }
+    } catch {
       // Ignore polling errors silently
     }
   }, [isAuthenticated])

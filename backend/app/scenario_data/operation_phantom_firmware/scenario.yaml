@@ -11,6 +11,7 @@ stages:
     flaw_mode: "none"
     vulnerability_category: "informational"
     objective: "Discover the failed deployment ticket's root cause."
+    credentials_to_use: "None Required. Just use the UI to explore."
     discovery_process: "Read the device record for Line 2 in Assets."
     capability_gained: "Recognizes outdated/unpatched components in an asset inventory."
     evidence: ["device_record_line2"]
@@ -32,6 +33,7 @@ stages:
     flaw_mode: "option_a"
     vulnerability_category: "authorization"
     objective: "Access the assigned engineer's employee record."
+    credentials_to_use: "Replace your user ID with the target engineer's UUID in the API request."
     discovery_process: "Follow the assigned_engineer name from the device record."
     capability_gained: "Can access records outside assigned clearance level."
     evidence: ["employee_record_leak"]
@@ -53,6 +55,7 @@ stages:
     flaw_mode: "option_a"
     vulnerability_category: "injection"
     objective: "Use the global search to find deployment logs."
+    credentials_to_use: "Search Query: \" OR 1=1 --"
     discovery_process: "Try an unusual query in the search bar."
     capability_gained: "Can exploit unsanitized input handling to retrieve unintended data."
     evidence: ["deploy_log_leak"]
@@ -74,6 +77,7 @@ stages:
     flaw_mode: "option_b"
     vulnerability_category: "authentication"
     objective: "Escalate session privileges and confirm who really pushed the firmware update."
+    credentials_to_use: "HTTP Header -> X-User-Role: Administrator"
     discovery_process: "Inspect what the session/token stores client-side."
     capability_gained: "Recognizes when a system trusts client-supplied session data instead of re-verifying server-side."
     evidence: ["session_escalation_proof"]

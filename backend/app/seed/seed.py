@@ -143,6 +143,22 @@ def seed_db():
         db.add(line2_dev)
         devices.append(line2_dev)
 
+        # Seed HMI Terminal Unit-7734 explicitly for SE Stage 3
+        hmi_terminal_7734 = Device(
+            name="HMI Terminal Unit-7734",
+            mac_address="A1:B2:C3:D4:E5:F6",
+            ip_address="192.168.10.150",
+            status=DeviceStatusEnum.ONLINE,
+            location_id=locations[1].id,
+            firmware_id=firmwares[1].id,
+            vendor="Vendor HMI Corp",
+            asset_group="Production",
+            operating_system="OT-RTOS v2.0.1",
+            maintenance_window="None"
+        )
+        db.add(hmi_terminal_7734)
+        devices.append(hmi_terminal_7734)
+
         for i in range(99):
             is_network = i < 15  # Make the first 15 devices network infrastructure
             
@@ -226,11 +242,125 @@ def seed_db():
         )
         db.add(phantom_scenario)
 
+        # ─────────────────────────────────────────────────────────────────────
+        # Seed: Silent Exfiltration — Stage 1 Target Account
+        # ─────────────────────────────────────────────────────────────────────
+        # Password follows the implied migration pattern: Company@Year!
+        # The maintenance ticket hints at the convention without stating it.
+        # The helpdesk role is low-privilege (EMPLOYEE) — realistic for Stage 1.
+        se_target_pwd = get_password_hash("Nf@2024!")
+        se_target_user = User(
+            email="jess.okafor@neofactory.com",
+            hashed_password=se_target_pwd,
+            role=RoleEnum.EMPLOYEE
+        )
+        db.add(se_target_user)
+        db.flush()
+        se_target_emp = Employee(
+            user_id=se_target_user.id,
+            department_id=departments[7].id,  # HR department
+            first_name="Jess",
+            last_name="Okafor",
+            title="IT Helpdesk Support",
+            phone="+15550288461",
+            clearance_level="None"
+        )
+        db.add(se_target_emp)
+        users.append(se_target_user)
+        employees.append(se_target_emp)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Seed: HMI device with backup reference (SE Stage 2 discovery lead-in)
+        # The search injection results will reference this device's backup file.
+        # ─────────────────────────────────────────────────────────────────────
+        hmi_device = Device(
+            id="77347734-0000-4000-8000-000000000001",
+            name="HMI Terminal Unit-7734",
+            mac_address="00:2B:67:CC:4A:F1",
+            ip_address="192.168.10.88",
+            status=DeviceStatusEnum.ONLINE,
+            location_id=locations[1].id,
+            firmware_id=firmwares[1].id,
+            asset_group="Production",
+            vendor="Siemens Industrial",
+            operating_system="WinCC v7.5",
+            maintenance_window="Scheduled quarterly — next: Q3 2026"
+        )
+        db.add(hmi_device)
+        devices.append(hmi_device)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Seed: Maintenance ticket with IT migration hint (SE Stage 1 clue)
+        # Written as a real IT person would write a ticket note — implies pattern,
+        # does NOT state the password or the exact convention.
+        # ─────────────────────────────────────────────────────────────────────
+        it_dept_emp = employees[0]  # Admin employee acts as ticket creator
+        migration_ticket = MaintenanceTicket(
+            device_id=hmi_device.id,
+            assigned_to_id=se_target_emp.id,
+            created_by_id=it_dept_emp.id,
+            priority=PriorityEnum.LOW,
+            status=TicketStatusEnum.CLOSED,
+            issue_description=(
+                "Bulk account migration from legacy Active Directory to new IdP completed. "
+                "Helpdesk and support-tier accounts were provisioned with temporary credentials "
+                "following the standard migration convention used across all NeoFactory systems. "
+                "Reminder sent to affected users to reset at next login — compliance window closes end of month."
+            ),
+            resolution_notes=(
+                "Migration validated. All accounts accessible. Jess Okafor (IT Helpdesk) confirmed login "
+                "on 2026-07-01. Reset reminder acknowledged; ticket closed pending user self-service reset."
+            )
+        )
+        migration_ticket.created_at = fake.date_time_between(start_date='-21d', end_date='-18d')
+        db.add(migration_ticket)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Seed: Silent Exfiltration scenario record
+        # ─────────────────────────────────────────────────────────────────────
+        se_scenario = Scenario(
+            id="silent_exfiltration",
+            title="Silent Exfiltration",
+            description="Finance has flagged unusual outbound data activity. Investigate how employee PII was exported without admin credentials.",
+            business_context="Finance has flagged unusual outbound data activity, and a customer complaint suggests employee personal data may have been exposed.",
+            difficulty="Intermediate",
+            category="Multi-Vector Attack Chain",
+            expected_learning_objectives=[
+                "Exploit missing rate-limiting via credential brute-force",
+                "Use injection to leak out-of-scope configuration data",
+                "Exploit path traversal to exfiltrate internal service credentials",
+                "Leverage stolen credentials to bypass authorization on a privileged endpoint"
+            ]
+        )
+        db.add(se_scenario)
+
         db.commit()
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Create backup files directory and normal backup file for SE Stage 3
+        # The secret credentials file is written by the Dockerfile at container start.
+        # ─────────────────────────────────────────────────────────────────────
+        import os
+        backups_dir = "/app/backups"
+        os.makedirs(backups_dir, exist_ok=True)
+        # Write a normal (non-secret) backup file so the feature feels real
+        normal_backup_path = os.path.join(backups_dir, "ot-ctrl-backup-line7.cfg")
+        if not os.path.exists(normal_backup_path):
+            with open(normal_backup_path, "w") as f:
+                f.write("# OT Controller Backup — HMI Terminal Unit-7734\n")
+                f.write("# Generated: 2026-07-01T03:00:00Z\n")
+                f.write("# Device: HMI Terminal Unit-7734\n")
+                f.write("controller_mode=ACTIVE\n")
+                f.write("comm_protocol=PROFINET\n")
+                f.write("failsafe_timeout=30s\n")
+                f.write("watchdog_enabled=true\n")
+
         print("Database seeded successfully!")
 
     except Exception as e:
         print(f"Error during seeding: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()

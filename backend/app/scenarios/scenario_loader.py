@@ -16,3 +16,4 @@ class ScenarioLoader:
                 with open(yaml_path, "r") as f:
                     data = yaml.safe_load(f)
                     self.registry.register(data.get("id"), data)
+# force reload to capture yaml changes

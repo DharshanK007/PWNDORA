@@ -40,50 +40,74 @@ const columns: Column<Employee>[] = [
   { key: 'clearance_level', header: 'Clearance' }
 ]
 
+import { ExportDirectoryDialog } from '@/components/common/dialog/ExportDirectoryDialog'
 import { EmployeeDetailsDialog } from '@/components/common/dialog/EmployeeDetailsDialog'
 import { useState } from 'react'
+import { useLabSession } from '@/contexts/LabSessionContext'
 
 export function EmployeesPage() {
   const { data, isLoading, isError, refetch } = useEmployees()
+  const { currentStage, scenario } = useLabSession()
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+
+  // Only reveal the Export feature during Stage 4 of Silent Exfiltration
+  const showExport = scenario?.id === 'silent_exfiltration' && currentStage === 4
 
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 space-y-6 pb-12">
       <PageHeader 
         title="Employees" 
         description="Manage enterprise personnel and access credentials."
+        actions={
+          showExport && (
+            <button 
+              onClick={() => setIsExportDialogOpen(true)}
+              className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-500"
+            >
+              Export Directory
+            </button>
+          )
+        }
       />
 
-      {isError ? (
-        <EmptyModule
-          title="Failed to Load Employees"
-          description="There was an error communicating with the backend API."
-          icon={Users}
-          action={
-            <button 
-              onClick={() => refetch()} 
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Try Again
-            </button>
-          }
-        />
-      ) : (
-        <InfoPanel title="Personnel Directory">
-          <DataTable
-            data={data?.items || []}
-            columns={columns}
-            isLoading={isLoading}
-            keyExtractor={(item) => item.id}
-            emptyMessage="No employees found in the organization."
-            onRowClick={(item) => setSelectedEmployee(item)}
+      <div className="w-full">
+        {isError ? (
+          <EmptyModule
+            title="Failed to Load Employees"
+            description="There was an error communicating with the backend API."
+            icon={Users}
+            action={
+              <button 
+                onClick={() => refetch()} 
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Try Again
+              </button>
+            }
           />
-        </InfoPanel>
-      )}
+        ) : (
+          <InfoPanel title="Personnel Directory">
+            <DataTable
+              data={data?.items || []}
+              columns={columns}
+              isLoading={isLoading}
+              keyExtractor={(item) => item.id}
+              emptyMessage="No employees found in the organization."
+              onRowClick={(item) => setSelectedEmployee(item)}
+            />
+          </InfoPanel>
+        )}
+      </div>
 
       <EmployeeDetailsDialog
         employee={selectedEmployee}
         onClose={() => setSelectedEmployee(null)}
+      />
+
+      <ExportDirectoryDialog 
+        isOpen={isExportDialogOpen} 
+        onClose={() => setIsExportDialogOpen(false)} 
       />
     </div>
   )

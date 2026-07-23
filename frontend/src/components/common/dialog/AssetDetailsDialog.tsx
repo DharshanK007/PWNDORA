@@ -161,6 +161,53 @@ export function AssetDetailsDialog({ asset, onClose }: AssetDetailsDialogProps) 
                   <p><span className="text-muted-foreground">Firmware ID:</span> {details.firmware_id || 'v1.2.3'}</p>
                 </div>
               </div>
+
+              {/* Configuration Backup Explorer */}
+              <div className="space-y-2 text-xs mt-4">
+                <div className="flex items-center gap-2 text-muted-foreground font-semibold">
+                  <Server className="h-4 w-4 text-primary" />
+                  <span>Configuration Backup Archive</span>
+                </div>
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/20 space-y-3">
+                  <p className="text-muted-foreground mb-2">Retrieve archived configuration files for this asset.</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-3 py-2 rounded-md border border-border bg-background font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Enter backup filename..."
+                      defaultValue="ot-ctrl-backup-line7.cfg"
+                      id="backup-filename-input"
+                    />
+                    <button
+                      onClick={async () => {
+                        const filename = (document.getElementById('backup-filename-input') as HTMLInputElement).value
+                        if (!filename) return
+                        try {
+                          const res = await api.get('/devices/' + details.id + '/backup?filename=' + encodeURIComponent(filename))
+                          const outputEl = document.getElementById('backup-output')
+                          if (outputEl) {
+                            outputEl.textContent = res.data.content || JSON.stringify(res.data, null, 2)
+                            outputEl.classList.remove('hidden', 'text-destructive')
+                            outputEl.classList.add('text-emerald-400')
+                          }
+                          if (refetch) await refetch()
+                        } catch (err: any) {
+                          const outputEl = document.getElementById('backup-output')
+                          if (outputEl) {
+                            outputEl.textContent = err.response?.data?.detail || 'Failed to fetch backup file.'
+                            outputEl.classList.remove('hidden', 'text-emerald-400')
+                            outputEl.classList.add('text-destructive')
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
+                    >
+                      Fetch Archive
+                    </button>
+                  </div>
+                  <pre id="backup-output" className="hidden p-3 mt-2 bg-black/80 rounded border border-border text-[10px] font-mono overflow-x-auto max-h-48"></pre>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="p-4 text-center text-muted-foreground">No details available.</div>

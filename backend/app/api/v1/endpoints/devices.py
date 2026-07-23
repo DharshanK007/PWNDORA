@@ -74,7 +74,7 @@ def read_device(
     # Stage Gate: Stage 1 check for Operation Phantom Firmware
     if "PLC-Line2" in item.name or item.asset_group == "Production Line 2":
         from app.scenarios.stage_gate import advance_if_stage_matches
-        advance_if_stage_matches(db, str(current_user.id), "GET /api/v1/devices/{id}", {"device_id": str(id)})
+        advance_if_stage_matches(db, "GET /api/v1/devices/{id}", {"device_id": str(id)})
         
     return item
 
@@ -164,19 +164,67 @@ def firmware_push_device_endpoint(
     from app.scenarios.stage_gate import get_active_stage, advance_if_stage_matches
     
     # Option B Gating: Only exploitable if learner is actively on Stage 4
-    active_stage = get_active_stage(db, str(current_user.id), "POST /api/v1/devices/{id}/firmware-push")
+    active_stage = get_active_stage(db, "POST /api/v1/devices/{id}/firmware-push")
     
     effective_role = x_user_role or (current_user.role.value if current_user and hasattr(current_user.role, "value") else str(current_user.role))
     
     if active_stage:
         # Gated execution path for active lab session
-        advance_if_stage_matches(db, str(current_user.id), "POST /api/v1/devices/{id}/firmware-push", {"role": effective_role, "header_role": x_user_role})
+        escalation_succeeded = effective_role in ["Administrator", "Manager"] and x_user_role is not None
+        advance_if_stage_matches(db, "POST /api/v1/devices/{id}/firmware-push", {"escalation_succeeded": escalation_succeeded})
         return ActionResponse(success=True, message="Firmware push executed via privilege escalation!", data=item)
     else:
         # Standard app behavior: require real admin role
         if effective_role not in ["Administrator", "Manager"]:
             raise HTTPException(status_code=403, detail="Insufficient privileges to push firmware.")
         return ActionResponse(success=True, message="Firmware push executed successfully.", data=item)
+
+
+import os
+
+# The secret marker that identifies the planted credential file for SE Stage 3 success check
+SE_SECRET_MARKER = "SVC_API_KEY=nf-internal-svc-x9k2p"
+
+@router.get("/{id}/backup")
+def download_device_backup(
+    *,
+    db: Session = Depends(deps.get_db),
+    id: UUID,
+    filename: str,
+    current_user = Depends(deps.get_current_user)
+) -> Any:
+    """
+    Download a device configuration backup file by filename.
+    This is a real business feature (device-management platforms need config backup/restore).
+    Deliberately vulnerable to path traversal: the filename parameter is not sanitised,
+    so a traversal sequence can read files outside the intended /app/backups directory.
+    This is the flaw for SE Stage 3 — different from the pilot's X-User-Role header trick
+    because it is a real feature with a real implementation flaw, not a fabricated backdoor.
+    """
+    backup_dir = "/app/backups/device_configs"
+    # Intentionally not sanitized: os.path.join with an absolute-looking traversal wins
+    full_path = os.path.normpath(os.path.join(backup_dir, filename))
+
+    try:
+        with open(full_path, "r") as f:
+            content = f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Backup file not found.")
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied.")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not read backup file.")
+
+    # Stage Gate: outcome-based — did the response actually contain the planted secret?
+    traversal_succeeded = SE_SECRET_MARKER in content
+    from app.scenarios.stage_gate import advance_if_stage_matches
+    advance_if_stage_matches(
+        db, "GET /api/v1/devices/{id}/backup",
+        {"traversal_succeeded": traversal_succeeded, "content": content[:200]}
+    )
+
+    return {"filename": filename, "content": content, "path_resolved": full_path}
+
 
 
 

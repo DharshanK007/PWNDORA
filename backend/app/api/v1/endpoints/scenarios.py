@@ -16,6 +16,28 @@ router = APIRouter()
 def list_scenarios():
     return manager.registry.list_scenarios()
 
+@router.get("/active-state")
+def get_active_state(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
+    """
+    Returns the user's most recent IN_PROGRESS scenario state across ALL scenarios.
+    Used by the frontend LabSessionContext to determine which scenario is active
+    without hardcoding a specific scenario ID.
+    """
+    from app.scenarios.scenario_state_model import ScenarioState
+    state = db.query(ScenarioState).filter(
+        ScenarioState.status == "IN_PROGRESS"
+    ).order_by(ScenarioState.started_at.desc()).first()
+
+    if not state:
+        # Also check for the most recently COMPLETED state (so the status bar persists after completion)
+        state = db.query(ScenarioState).order_by(ScenarioState.started_at.desc()).first()
+
+    if not state:
+        return {"status": "NOT_STARTED", "state": None, "scenario": None}
+
+    scenario = manager.registry.get_scenario(state.scenario_id)
+    return {"status": state.status, "state": state, "scenario": scenario}
+
 @router.get("/{scenario_id}")
 def get_scenario(scenario_id: str):
     s = manager.registry.get_scenario(scenario_id)
@@ -37,8 +59,7 @@ def reset_scenario(scenario_id: str, db: Session = Depends(deps.get_db), current
 def get_scenario_state(scenario_id: str, db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
     from app.scenarios.scenario_state_model import ScenarioState
     state = db.query(ScenarioState).filter(
-        ScenarioState.scenario_id == scenario_id,
-        ScenarioState.user_id == str(current_user.id)
+        ScenarioState.scenario_id == scenario_id
     ).order_by(ScenarioState.started_at.desc()).first()
     if not state:
         state = manager.start(db, scenario_id, str(current_user.id))
@@ -51,8 +72,7 @@ def perform_action(scenario_id: str, req: ActionRequest, db: Session = Depends(d
     from app.events.events import StageAdvanced, ScenarioCompleted
     
     state = db.query(ScenarioState).filter(
-        ScenarioState.scenario_id == scenario_id,
-        ScenarioState.user_id == current_user.id
+        ScenarioState.scenario_id == scenario_id
     ).order_by(ScenarioState.started_at.desc()).first()
     
     if not state or state.status != "IN_PROGRESS":
