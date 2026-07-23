@@ -7,6 +7,7 @@ from app.attack_engine.owasp_risk import calculate_owasp_risk
 from app.clues.clue_manager import clue_manager
 import logging
 from uuid import uuid4
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +38,28 @@ def generate_scenario_report(scenario_state_id: str, user_id: str = None):
             return None
 
         actual_user_id = str(user_id or state.user_id)
+        
+        # Calculate time analysis
+        time_analysis = "N/A"
+        if state.started_at:
+            end_time = state.completed_at or datetime.now(timezone.utc)
+            duration = end_time - state.started_at
+            minutes = int(duration.total_seconds() // 60)
+            seconds = int(duration.total_seconds() % 60)
+            time_analysis = f"{minutes} minutes and {seconds} seconds"
+
         report_content = f"# Professional Vulnerability Assessment Report: {scenario.get('name')}\n\n"
         report_content += "## Engagement Executive Summary & Business Context\n"
         report_content += f"{scenario.get('business_context')}\n\n"
+        report_content += f"**Time Analysis (Total Engagement Duration):** {time_analysis}\n\n"
         report_content += "This deliverable documents the technical vulnerability findings, attack vectors, risk metrics, and mitigation guidelines produced during the NeoFactory Industrial Cyber Range assessment.\n\n"
         
         report_content += "## Consolidated Finding Matrix & Attack Chain\n\n"
         
-        completed_stages = state.completed_stages or [1, 2, 3, 4]
+        completed_stages = state.completed_stages or []
+        if not completed_stages:
+            return None
+            
         for stage_id in completed_stages:
             stage_config = next((s for s in scenario.get("stages", []) if s.get("id") == stage_id), None)
             if not stage_config:
@@ -65,7 +80,7 @@ def generate_scenario_report(scenario_state_id: str, user_id: str = None):
                 cvss_score = calculate_cvss(cvss_metrics)
                 report_content += f"- **CVSS v3.1 Base Score**: {cvss_score} / 10.0\n"
             else:
-                report_content += f"- **CVSS v3.1 Base Score**: 7.5 (High)\n"
+                report_content += f"- **CVSS v3.1 Base Score**: Not scored — insufficient data\n"
             
             # OWASP Risk
             risk_factors = stage_config.get("owasp_risk_factors")
@@ -73,7 +88,7 @@ def generate_scenario_report(scenario_state_id: str, user_id: str = None):
                 l_score, i_score, risk_lvl = calculate_owasp_risk(risk_factors)
                 report_content += f"- **OWASP Risk Rating**: {risk_lvl} (Likelihood: {l_score}/10, Impact: {i_score}/10)\n"
             else:
-                report_content += f"- **OWASP Risk Rating**: HIGH (Likelihood: 7/10, Impact: 7/10)\n"
+                report_content += f"- **OWASP Risk Rating**: Not scored — insufficient data\n"
                 
             # Evidence
             evidence = stage_config.get("evidence", [])
@@ -86,6 +101,8 @@ def generate_scenario_report(scenario_state_id: str, user_id: str = None):
             report_content += "[Write your technical analysis here]\n\n"
             report_content += "#### Remediation & Control Guidance\n"
             report_content += "[Write remediation recommendations here]\n\n"
+
+
 
         # Create Draft Report
         from app.models.user import User

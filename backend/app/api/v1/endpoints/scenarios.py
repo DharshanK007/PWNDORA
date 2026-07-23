@@ -62,6 +62,22 @@ def perform_action(scenario_id: str, req: ActionRequest, db: Session = Depends(d
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
         
+    if req.action == "end_session":
+        state.status = "COMPLETED"
+        state.completed_at = datetime.now(timezone.utc)
+        EventBus.publish(ScenarioCompleted.create(
+            entity_id=state.id,
+            metadata={
+                "scenario_id": scenario_id,
+                "user_id": str(current_user.id),
+                "score": len(state.completed_stages) * 25 if state.completed_stages else 0
+            }
+        ))
+        db.commit()
+        db.refresh(state)
+        return {"status": "success", "state": state}
+
+        
     stages = scenario.get("stages", [])
     current_stage_idx = state.current_stage - 1
     if current_stage_idx < len(stages):

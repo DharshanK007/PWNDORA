@@ -1,9 +1,9 @@
-﻿from typing import Any
+from typing import Any
 from app.events.base_event import BaseEvent
 from app.db.session import SessionLocal
 from app.models.user import User
 from app.models.learner_capability import LearnerCapability
-from app.scenarios.scenario_registry import registry
+from app.scenarios.scenario_manager import manager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def capability_tracker_handler(event: BaseEvent):
         if not scenario_id or stage_id is None or not user_id:
             return
 
-        scenario_config = registry.get_scenario(scenario_id)
+        scenario_config = manager.registry.get_scenario(scenario_id)
         capability = event.metadata.get("capability_gained")
         if not capability and scenario_config:
             stage_config = next((s for s in scenario_config.get("stages", []) if s.get("id") == stage_id), None)

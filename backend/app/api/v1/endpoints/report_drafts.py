@@ -31,7 +31,11 @@ def get_report_draft(
     ).first()
     
     if not report:
-        raise HTTPException(status_code=404, detail="Draft report not found")
+        from app.report_generator import generate_scenario_report
+        report = generate_scenario_report(scenario_state_id, current_user.id)
+        if not report:
+            raise HTTPException(status_code=404, detail="No completed stages to generate a report")
+
         
     return {
         "id": report.id,

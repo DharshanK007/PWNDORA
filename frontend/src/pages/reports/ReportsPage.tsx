@@ -28,7 +28,7 @@ const columns: Column<Report>[] = [
   { 
     key: 'created_at', 
     header: 'Date Generated',
-    cell: (item) => new Date(item.created_at).toLocaleDateString()
+    cell: (item) => new Date(item.created_at.endsWith('Z') ? item.created_at : item.created_at + 'Z').toLocaleString()
   }
 ]
 

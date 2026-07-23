@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { X, FileText, Send, CheckCircle2 } from 'lucide-react'
-import api from '@/lib/axios'
-
+import { useEffect, useRef } from 'react'
+import { X, FileText } from 'lucide-react'
 interface ReportViewerDialogProps {
   isOpen: boolean
   reportId?: string
@@ -22,11 +20,7 @@ export function ReportViewerDialog({
   onSaved,
 }: ReportViewerDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  
-  const [analystNotes, setAnalystNotes] = useState('')
-  const [recommendations, setRecommendations] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(status === 'Under Review' || status === 'Approved' || status === 'Published')
+  const isSubmitted = status === 'Under Review' || status === 'Approved' || status === 'Published'
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -69,6 +63,19 @@ export function ReportViewerDialog({
       if (line.startsWith('#### ')) {
         return <h4 key={idx} className="text-sm font-semibold text-foreground mt-2 mb-1">{line.replace('#### ', '')}</h4>
       }
+      if (line.startsWith('|')) {
+        if (line.includes('---')) return null
+        const cells = line.split('|').filter(c => c.trim() !== '')
+        return (
+          <div key={idx} className="grid grid-cols-3 gap-2 p-2 text-xs border-b border-border/50 font-mono bg-muted/10 hover:bg-muted/30">
+            {cells.map((cell, i) => (
+              <span key={i} className={i === 0 ? 'font-semibold text-foreground' : i === 1 ? 'text-primary font-bold' : 'text-muted-foreground'}>
+                {cell.trim().replace(/\*\*/g, '').replace(/`/g, '')}
+              </span>
+            ))}
+          </div>
+        )
+      }
       if (line.startsWith('- ')) {
         const text = line.replace('- ', '')
         const parts = text.split('**')
@@ -90,32 +97,6 @@ export function ReportViewerDialog({
     })
   }
 
-  const handleSubmitForReview = async () => {
-    if (!reportId) return
-    setIsSubmitting(true)
-    try {
-      let updatedContent = content
-      if (analystNotes.trim()) {
-        updatedContent = updatedContent.replace('[Write your technical analysis here]', analystNotes)
-      }
-      if (recommendations.trim()) {
-        updatedContent = updatedContent.replace('[Write remediation recommendations here]', recommendations)
-      }
-
-      await api.patch('/reports/' + reportId + '/submit', {
-        summary: updatedContent,
-        status: 'Under Review'
-      })
-
-      setIsSubmitted(true)
-      if (onSaved) onSaved()
-    } catch (err) {
-      console.error('Failed to submit report:', err)
-      alert('Failed to submit report. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   return (
     <dialog
@@ -155,68 +136,13 @@ export function ReportViewerDialog({
             {renderFormattedMarkdown(content)}
           </div>
 
-          {/* Interactive Learner Assessment Questions */}
-          <div className="mt-6 border-t border-border pt-6 space-y-5 bg-muted/20 p-5 rounded-xl border border-border/60">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
-                <span>Learner Assessment & Report Deliverable Submission</span>
-              </h3>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                Plain English Evaluation
-              </span>
-            </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Complete your technical assessment deliverable by evaluating the findings below in plain English. Your responses demonstrate your ability to translate technical exploitation into executive and engineering guidance.
-            </p>
-
-            {/* Field 1: Executive Impact Summary */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-foreground">
-                1. Executive Impact Summary <span className="text-muted-foreground font-normal">(Plain English for C-Suite Stakeholders)</span>
-              </label>
-              <textarea
-                value={analystNotes}
-                onChange={(e) => setAnalystNotes(e.target.value)}
-                disabled={isSubmitted}
-                placeholder="Summarize the attack impact on Production Line 2 and overall business risk for NeoFactory executive management..."
-                className="w-full h-24 p-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60 font-sans"
-              />
-            </div>
-
-            {/* Field 2: Technical Attack Chain Narrative */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-foreground">
-                2. Technical Attack Chain Narrative & Root Cause Analysis
-              </label>
-              <textarea
-                value={recommendations}
-                onChange={(e) => setRecommendations(e.target.value)}
-                disabled={isSubmitted}
-                placeholder="Detail how you exploited Asset Triage -> IDOR Employee Leak -> Search Query Injection -> Client Trust Firmware Push..."
-                className="w-full h-24 p-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60 font-sans"
-              />
-            </div>
-
-            {/* Field 3: Remediation Guidance */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-foreground">
-                3. Remediation & Enterprise Security Control Roadmap
-              </label>
-              <textarea
-                disabled={isSubmitted}
-                placeholder="Detail concrete architectural fixes: Server-side role enforcement, parameterized SQL queries, IDOR access controls..."
-                className="w-full h-24 p-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60 font-sans"
-              />
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
         <div className="border-t border-border p-4 bg-muted/40 flex justify-between items-center">
           <span className="text-xs text-muted-foreground">
-            {isSubmitted ? 'Assessment Report submitted and published.' : 'Complete plain English questions before submitting for review.'}
+            {isSubmitted ? 'Assessment Report published.' : 'Draft Report Preview.'}
           </span>
           <div className="flex items-center gap-3">
             <button
@@ -225,28 +151,6 @@ export function ReportViewerDialog({
             >
               Close
             </button>
-            {!isSubmitted && (
-              <button
-                onClick={handleSubmitForReview}
-                disabled={isSubmitting}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 shadow-sm"
-              >
-                {isSubmitting ? (
-                  'Submitting Deliverable...'
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    Submit Assessment Deliverable
-                  </>
-                )}
-              </button>
-            )}
-            {isSubmitted && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500 font-semibold px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                <CheckCircle2 className="h-4 w-4" />
-                Pentest Deliverable Submitted & Approved
-              </span>
-            )}
           </div>
         </div>
       </div>
