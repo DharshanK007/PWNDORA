@@ -32,6 +32,7 @@ const ScenarioCatalogPage = lazy(() => import('@/pages/scenarios/ScenarioCatalog
 const ScenarioDetailsPage = lazy(() => import('@/pages/scenarios/ScenarioDetailsPage').then(m => ({ default: m.ScenarioDetailsPage })))
 const ProfilePage = lazy(() => import('@/pages/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const WelcomePage = lazy(() => import('@/pages/welcome/WelcomePage').then(m => ({ default: m.WelcomePage })))
 
 // New Placeholders (Default exports)
 const ReplayPage = lazy(() => import('@/pages/replay/ReplayPage'))
@@ -60,12 +61,12 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      {/* ── Root redirect ── */}
-      <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+      {/* ── Root Landing / Welcome ── */}
+      <Route path={ROUTES.HOME} element={<Suspense fallback={<LoadingPage />}><WelcomePage /></Suspense>} />
 
       {/* ── Auth routes ── */}
       <Route element={<PublicRoute />}>
-        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.LOGIN} element={<Suspense fallback={<LoadingPage />}><LoginPage /></Suspense>} />
       </Route>
 
       {/* ── Enterprise routes (sidebar layout) ── */}

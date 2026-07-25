@@ -125,8 +125,8 @@ def seed_db():
             firmwares.append(fw)
         db.commit()
 
-        # Seed Devices (Line 2 Device FIRST so it's on Page 1)
-        devices = []
+        # Seed Devices (Target Device)
+        devices_to_add = []
         line2_dev = Device(
             name="PLC-Line2-FW-Controller",
             mac_address="00:1B:44:11:3A:B7",
@@ -135,13 +135,37 @@ def seed_db():
             location_id=locations[0].id,
             firmware_id=firmwares[0].id,
             vendor="Vendor PLC Corp",
-            asset_group="Production Line 2",
+            asset_group="Production",
             operating_system="OT-RTOS v1.2.3 (Outdated)",
             maintenance_window="Deferred update — vendor advisory pending review",
-            assigned_engineer_id=marcus_emp.id
+            assigned_engineer_id=marcus_emp.id,
+            last_patch_date="2021-05-12"
         )
-        db.add(line2_dev)
-        devices.append(line2_dev)
+        devices_to_add.append(line2_dev)
+
+        # Seed Decoys to confuse the learner
+        decoy_names = [
+            "PLC-Line1-Sensor", "PLC-Line1-Actuator", "PLC-Line1-Controller",
+            "HMI-Line2-Panel", "PLC-Line2-Sensor", "PLC-Line2-Actuator",
+            "SCADA-Line3-Gateway", "PLC-Line3-Controller", "PLC-Line3-Sensor",
+            "Robotic-Arm-Line1", "Conveyor-Line2-Motor", "HVAC-Line3-Unit",
+            "PLC-Line2-Backup", "HMI-Line1-Main", "Sensor-Line3-Temp"
+        ]
+        for name in decoy_names:
+            decoy = Device(
+                name=name,
+                mac_address=fake.mac_address(),
+                ip_address=fake.ipv4_private(),
+                status=DeviceStatusEnum.MAINTENANCE,
+                location_id=random.choice(locations).id,
+                firmware_id=random.choice(firmwares).id,
+                vendor="Generic Industrial Corp",
+                asset_group="Production",
+                operating_system=f"OT-RTOS v{random.randint(2,3)}.{random.randint(0,5)}",
+                maintenance_window="Scheduled routine maintenance",
+                last_patch_date=fake.date_between(start_date='-2y', end_date='-3m').isoformat()
+            )
+            devices_to_add.append(decoy)
 
         # Seed HMI Terminal Unit-7734 explicitly for SE Stage 3
         hmi_terminal_7734 = Device(
@@ -154,22 +178,26 @@ def seed_db():
             vendor="Vendor HMI Corp",
             asset_group="Production",
             operating_system="OT-RTOS v2.0.1",
-            maintenance_window="None"
+            maintenance_window="None",
+            last_patch_date=fake.date_between(start_date='-3m', end_date='today').isoformat()
         )
-        db.add(hmi_terminal_7734)
-        devices.append(hmi_terminal_7734)
+        devices_to_add.append(hmi_terminal_7734)
 
-        for i in range(99):
-            is_network = i < 15  # Make the first 15 devices network infrastructure
+        for i in range(350):
+            is_network = i < 40  # Make the first 40 devices network infrastructure
             
             if is_network:
                 names = ["Core Switch", "Distribution Switch", "Edge Router", "Access Switch", "Core Firewall", "VPN Gateway", "DMZ Switch"]
                 dev_name = f"{random.choice(names)} {random.randint(10,99)}"
                 asset_group = "Network"
             else:
-                names = ["PLC", "HMI Panel", "Robotic Arm", "Conveyor Sensor", "HVAC Controller", "CNC Machine", "SCADA Server"]
+                names = ["PLC", "HMI Panel", "Robotic Arm", "Conveyor Sensor", "HVAC Controller", "CNC Machine", "SCADA Server", "Line Assembly Motor", "Temperature Sensor", "Pressure Valve"]
                 dev_name = f"{random.choice(names)} Unit-{random.randint(1000,9999)}"
-                asset_group = random.choice(["Production", "HVAC", "Safety", "Control Systems"])
+                # Weight heavily towards Production to bury the target
+                asset_group = random.choices(
+                    population=["Production", "HVAC", "Safety", "Control Systems"],
+                    weights=[0.6, 0.1, 0.1, 0.2]
+                )[0]
 
             dev = Device(
                 name=dev_name,
@@ -178,10 +206,16 @@ def seed_db():
                 status=random.choice(list(DeviceStatusEnum)),
                 location_id=random.choice(locations).id,
                 firmware_id=random.choice(firmwares).id,
-                asset_group=asset_group
+                asset_group=asset_group,
+                last_patch_date=fake.date_between(start_date='-6m', end_date='today').isoformat()
             )
+            devices_to_add.append(dev)
+            
+        # Shuffle devices before inserting so the target isn't always first
+        random.shuffle(devices_to_add)
+        devices = devices_to_add
+        for dev in devices_to_add:
             db.add(dev)
-            devices.append(dev)
         db.commit()
 
         # Seed Maintenance Tickets (200)
@@ -236,7 +270,7 @@ def seed_db():
             title="Operation Phantom Firmware",
             description="A maintenance ticket reports that Production Line 2 stopped after a firmware update. Investigate why.",
             business_context="A routine firmware deployment on Production Line 2 failed. Triage suggests a configuration error.",
-            difficulty="Intermediate",
+            difficulty="Beginner",
             category="Multi-Vector Attack Chain",
             expected_learning_objectives=["Recognize outdated components", "Exploit IDOR in employee records", "Use injection on global search", "Exploit client trust session flaw"]
         )

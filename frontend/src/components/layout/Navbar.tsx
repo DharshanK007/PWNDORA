@@ -10,7 +10,7 @@ interface NavbarProps {
 
 export function Navbar({ onMenuClick }: NavbarProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm relative z-40">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm relative z-50">
       {/* Left: Menu toggle + Logo (mobile only) */}
       <div className="flex items-center gap-3 lg:w-1/3">
         <button

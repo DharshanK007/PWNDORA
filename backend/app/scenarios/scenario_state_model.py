@@ -23,6 +23,7 @@ class ScenarioState(Base):
     last_checkpoint: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
     completed_stages: Mapped[Optional[list[int]]] = mapped_column(JSON, default=list, nullable=True)
+    hints_used: Mapped[Optional[dict[str, list[int]]]] = mapped_column(JSON, default=dict, nullable=True)
     flags_captured: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(JSON, default=list, nullable=True)
     total_stages: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     vulnerability_graph: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(JSON, default=list, nullable=True)

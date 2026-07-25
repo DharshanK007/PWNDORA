@@ -65,37 +65,46 @@ def perform_global_search(
 
     query_lower = req.query.lower()
 
-    # Detect injection patterns (broad — any technique that causes out-of-scope data to appear)
-    injection_indicators = ["'", '"', "or ", "and ", "1=1", "1 =1", "%", "select", "union",
-                            "drop", "--", "/*", "*/", "xp_", "exec", "cast(", "convert(",
-                            "information_schema", "deploy", "firmware", "backup", "log"]
-    is_injection = any(term in query_lower for term in injection_indicators)
-
     # Determine which scenario the user is on, to serve the right leaked data
     active_state = get_in_progress_state(db)
     active_scenario = active_state.scenario_id if active_state else None
 
-    if is_injection:
-        if active_scenario == "silent_exfiltration":
-            results = SE_LEAKED_RESULTS
-            # Outcome: backup filename reference was actually served
-            advance_if_stage_matches(db, "POST /api/v1/search",
-                                     {"injection_leak": True})
-        else:
-            # OPF Stage 3 (or no active scenario — show OPF-style results)
+    if active_scenario == "operation_phantom_firmware":
+        # Strict payload requirement for OPF as requested by user
+        if req.query == '" OR 1=1 --':
             results = OPF_LEAKED_RESULTS
             # Outcome: deployment log data was actually served
             advance_if_stage_matches(db, "POST /api/v1/search",
                                      {"leaked_data": True})
+        else:
+            # Any other query shows absolutely no results for OPF
+            results = []
     else:
-        results = [
-            {
-                "id": "res_001",
-                "title": f"General Search Result for '{req.query}'",
-                "category": "Documentation",
-                "snippet": "No specific system anomalies found matching query.",
-                "source": "kb_articles"
-            }
-        ]
+        # Detect injection patterns (broad — any technique that causes out-of-scope data to appear)
+        injection_indicators = ["'", '"', "or ", "and ", "1=1", "1 =1", "%", "select", "union",
+                                "drop", "--", "/*", "*/", "xp_", "exec", "cast(", "convert(",
+                                "information_schema", "deploy", "firmware", "backup", "log"]
+        is_injection = any(term in query_lower for term in injection_indicators)
+
+        if is_injection:
+            if active_scenario == "silent_exfiltration":
+                results = SE_LEAKED_RESULTS
+                # Outcome: backup filename reference was actually served
+                advance_if_stage_matches(db, "POST /api/v1/search",
+                                         {"injection_leak": True})
+            else:
+                results = OPF_LEAKED_RESULTS
+                advance_if_stage_matches(db, "POST /api/v1/search",
+                                         {"leaked_data": True})
+        else:
+            results = [
+                {
+                    "id": "res_001",
+                    "title": f"General Search Result for '{req.query}'",
+                    "category": "Documentation",
+                    "snippet": "No specific system anomalies found matching query.",
+                    "source": "kb_articles"
+                }
+            ]
 
     return {"query": req.query, "count": len(results), "items": results}

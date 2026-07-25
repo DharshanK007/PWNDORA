@@ -2,21 +2,24 @@ id: operation_phantom_firmware
 name: "Operation Phantom Firmware"
 business_context: >
   A maintenance ticket reports that Production Line 2 stopped after a
-  firmware update. Investigate why and produce a professional pentest assessment deliverable.
-difficulty: Intermediate
+  firmware mistake. Investigate why and produce a professional pentest assessment deliverable.
+difficulty: Beginner
 stages:
   - id: 1
     business_module: "Assets"
     target_endpoint: "GET /api/v1/devices/{id}"
     flaw_mode: "none"
     vulnerability_category: "informational"
-    objective: "Discover the failed deployment ticket's root cause."
+    objective: "Discover the failed deployment ticket's root cause by investigating the PLC Firmware Controller on Production Line 2."
     credentials_to_use: "None Required. Just use the UI to explore."
-    discovery_process: "Read the device record for Line 2 in Assets."
+    discovery_process: "Read the device record for the PLC Firmware Controller on Production Line 2 in Assets."
     capability_gained: "Recognizes outdated/unpatched components in an asset inventory."
     evidence: ["device_record_line2"]
     owasp: "A06:2021 - Vulnerable and Outdated Components"
     mitre: "T1190 - Exploit Public-Facing Application"
+    mitre_techniques:
+      - "T1518 - Software Discovery"
+      - "T1082 - System Information Discovery"
     cvss: {attack_vector: Network, attack_complexity: Low, privileges_required: None,
            user_interaction: None, scope: Unchanged, confidentiality: High,
            integrity: Low, availability: None}
@@ -25,6 +28,39 @@ stages:
     attack_surface: "Device Inventory / PLC Controller"
     technical_mechanism: "Unpatched OT-RTOS Firmware v1.2.3 & Deferred Maintenance"
     discovery_surface: "Device Inventory Page"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best describes the software discovery action in this stage?"
+        options:
+          - "T1518 - Software Discovery"
+          - "T1087 - Account Discovery"
+          - "T1190 - Exploit Public-Facing Application"
+          - "T1005 - Data from Local System"
+        answer: "T1518 - Software Discovery"
+      cvss:
+        AV: "Network"
+        PR: "Unauthenticated"
+        C: "High"
+        I: "Low"
+        A: "None"
+      owasp_likelihood:
+        L_Skill: "5"
+        L_Motive: "4"
+        L_Opp: "9"
+        L_Size: "9"
+        L_Disc: "7"
+        L_Exp: "9"
+        L_Aware: "6"
+        L_Detect: "8"
+      owasp_impact:
+        I_Conf: "6"
+        I_Integ: "1"
+        I_Avail: "1"
+        I_Acct: "7"
+        I_Fin: "3"
+        I_Rep: "5"
+        I_Comp: "2"
+        I_Priv: "5"
     next_stage: 2
 
   - id: 2
@@ -32,13 +68,16 @@ stages:
     target_endpoint: "GET /api/v1/employees/{id}"
     flaw_mode: "option_a"
     vulnerability_category: "authorization"
-    objective: "Access the assigned engineer's employee record."
-    credentials_to_use: "Replace your user ID with the target engineer's UUID in the API request."
-    discovery_process: "Follow the assigned_engineer name from the device record."
+    objective: "Try to find the exact employee for whom it is assigned."
+    credentials_to_use: "None Required. Use the UI filters to find the target employee."
+    discovery_process: "Use the assigned job role from the device record to locate the employee."
     capability_gained: "Can access records outside assigned clearance level."
     evidence: ["employee_record_leak"]
     owasp: "A01:2021 - Broken Access Control"
     mitre: "T1078 - Valid Accounts"
+    mitre_techniques:
+      - "T1087 - Account Discovery"
+      - "T1213 - Data from Information Repositories"
     cvss: {attack_vector: Network, attack_complexity: Low, privileges_required: Low,
            user_interaction: None, scope: Unchanged, confidentiality: High,
            integrity: None, availability: None}
@@ -47,6 +86,39 @@ stages:
     attack_surface: "Employee Profile Viewer"
     technical_mechanism: "Missing Ownership Validation & IDOR Parameter Flaw"
     discovery_surface: "URL Parameters & Employee Directory"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best describes the unauthorized access to employee records?"
+        options:
+          - "T1087 - Account Discovery"
+          - "T1518 - Software Discovery"
+          - "T1078 - Valid Accounts"
+          - "T1190 - Exploit Public-Facing Application"
+        answer: "T1087 - Account Discovery"
+      cvss:
+        AV: "Network"
+        PR: "Normal User"
+        C: "High"
+        I: "None"
+        A: "None"
+      owasp_likelihood:
+        L_Skill: "5"
+        L_Motive: "4"
+        L_Opp: "9"
+        L_Size: "7"
+        L_Disc: "7"
+        L_Exp: "5"
+        L_Aware: "6"
+        L_Detect: "3"
+      owasp_impact:
+        I_Conf: "9"
+        I_Integ: "1"
+        I_Avail: "1"
+        I_Acct: "1"
+        I_Fin: "3"
+        I_Rep: "4"
+        I_Comp: "5"
+        I_Priv: "7"
     next_stage: 3
 
   - id: 3
@@ -54,13 +126,17 @@ stages:
     target_endpoint: "POST /api/v1/search"
     flaw_mode: "option_a"
     vulnerability_category: "injection"
-    objective: "Use the global search to find deployment logs."
-    credentials_to_use: "Search Query: \" OR 1=1 --"
-    discovery_process: "Try an unusual query in the search bar."
+    objective: "Investigate the application's search functionality to uncover hidden deployment records."
+    credentials_to_use: "Try to avoid payload and bypass login screens, extract hidden data, or tamper with databases"
+    discovery_process: "Experiment with the search input to see how it processes special characters and logic."
     capability_gained: "Can exploit unsanitized input handling to retrieve unintended data."
     evidence: ["deploy_log_leak"]
     owasp: "A03:2021 - Injection"
     mitre: "T1190 - Exploit Public-Facing Application"
+    mitre_techniques:
+      - "T1190 - Exploit Public-Facing Application"
+      - "T1213 - Data from Information Repositories"
+      - "T1005 - Data from Local System"
     cvss: {attack_vector: Network, attack_complexity: Low, privileges_required: None,
            user_interaction: None, scope: Unchanged, confidentiality: High,
            integrity: Low, availability: None}
@@ -69,6 +145,39 @@ stages:
     attack_surface: "Enterprise Search Input Bar"
     technical_mechanism: "Unsanitized Database Query & Deployment Log Leakage"
     discovery_surface: "Global Search Bar"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best captures the vulnerability exploited via the search bar?"
+        options:
+          - "T1190 - Exploit Public-Facing Application"
+          - "T1518 - Software Discovery"
+          - "T1087 - Account Discovery"
+          - "T1548 - Abuse Elevation Control Mechanism"
+        answer: "T1190 - Exploit Public-Facing Application"
+      cvss:
+        AV: "Network"
+        PR: "Unauthenticated"
+        C: "High"
+        I: "Low"
+        A: "None"
+      owasp_likelihood:
+        L_Skill: "5"
+        L_Motive: "9"
+        L_Opp: "9"
+        L_Size: "9"
+        L_Disc: "3"
+        L_Exp: "3"
+        L_Aware: "5"
+        L_Detect: "1"
+      owasp_impact:
+        I_Conf: "9"
+        I_Integ: "5"
+        I_Avail: "1"
+        I_Acct: "7"
+        I_Fin: "7"
+        I_Rep: "5"
+        I_Comp: "5"
+        I_Priv: "3"
     next_stage: 4
 
   - id: 4
@@ -83,6 +192,10 @@ stages:
     evidence: ["session_escalation_proof"]
     owasp: "A07:2021 - Identification and Authentication Failures"
     mitre: "T1548 - Abuse Elevation Control Mechanism"
+    mitre_techniques:
+      - "T1548 - Abuse Elevation Control Mechanism"
+      - "T1068 - Exploitation for Privilege Escalation"
+      - "T1078 - Valid Accounts"
     cvss: {attack_vector: Network, attack_complexity: Low, privileges_required: Low,
            user_interaction: None, scope: Changed, confidentiality: High,
            integrity: High, availability: High}
@@ -91,4 +204,37 @@ stages:
     attack_surface: "Firmware Deployment Endpoint"
     technical_mechanism: "Server Trusting Client-Supplied Session Header (X-User-Role)"
     discovery_surface: "Browser DevTools / Client Session"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best describes bypassing authorization by modifying the X-User-Role header?"
+        options:
+          - "T1548 - Abuse Elevation Control Mechanism"
+          - "T1190 - Exploit Public-Facing Application"
+          - "T1087 - Account Discovery"
+          - "T1518 - Software Discovery"
+        answer: "T1548 - Abuse Elevation Control Mechanism"
+      cvss:
+        AV: "Network"
+        PR: "Normal User"
+        C: "High"
+        I: "High"
+        A: "High"
+      owasp_likelihood:
+        L_Skill: "0"
+        L_Motive: "9"
+        L_Opp: "4"
+        L_Size: "2"
+        L_Disc: "3"
+        L_Exp: "5"
+        L_Aware: "6"
+        L_Detect: "8"
+      owasp_impact:
+        I_Conf: "9"
+        I_Integ: "9"
+        I_Avail: "9"
+        I_Acct: "9"
+        I_Fin: "9"
+        I_Rep: "9"
+        I_Comp: "7"
+        I_Priv: "9"
     next_stage: null

@@ -11,7 +11,6 @@ import { useState } from 'react'
 
 const columns: Column<Report>[] = [
   { key: 'title', header: 'Report Name', className: 'font-medium' },
-  { key: 'type', header: 'Category' },
   {
     key: 'status',
     header: 'Status',
@@ -24,11 +23,19 @@ const columns: Column<Report>[] = [
       return <StatusBadge status={item.status} variant={variant} />
     }
   },
-  { key: 'generated_by', header: 'Author' },
   { 
     key: 'created_at', 
     header: 'Date Generated',
     cell: (item) => new Date(item.created_at.endsWith('Z') ? item.created_at : item.created_at + 'Z').toLocaleString()
+  },
+  {
+    key: 'download',
+    header: 'Download',
+    cell: () => (
+      <button className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded hover:bg-primary/90 transition-colors">
+        View & Download
+      </button>
+    )
   }
 ]
 
@@ -60,7 +67,7 @@ export function ReportsPage() {
       ) : (
         <InfoPanel title="Available Documents">
           <DataTable
-            data={data?.items || []}
+            data={data?.items ? [...data.items].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 1) : []}
             columns={columns}
             isLoading={isLoading}
             keyExtractor={(item) => item.id}

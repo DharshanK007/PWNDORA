@@ -6,7 +6,6 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { Footer } from '@/components/layout/Footer'
 import { useSidebar } from '@/hooks/useSidebar'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-
 import { LabStatusBar } from '@/components/lab/LabStatusBar'
 
 export function AppLayout() {
@@ -16,7 +15,7 @@ export function AppLayout() {
   useDocumentTitle()
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <Sidebar collapsed={isCollapsed} onToggle={toggleCollapsed} />
       
@@ -25,14 +24,14 @@ export function AppLayout() {
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-hidden relative">
+        {/* Lab Status Bar */}
+        <LabStatusBar />
+
         {/* Navbar */}
         <Navbar onMenuClick={toggleMobile} />
         
         {/* Breadcrumb Bar */}
         <BreadcrumbBar />
-
-        {/* Lab Status Bar */}
-        <LabStatusBar />
 
         {/* Page Content */}
         <main

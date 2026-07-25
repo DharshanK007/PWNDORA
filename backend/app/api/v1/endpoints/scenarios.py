@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 class ActionRequest(BaseModel):
     action: str
+    answers: dict = None
 
 router = APIRouter()
 
@@ -17,7 +18,7 @@ def list_scenarios():
     return manager.registry.list_scenarios()
 
 @router.get("/active-state")
-def get_active_state(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
+def get_active_state(db: Session = Depends(deps.get_db)):
     """
     Returns the user's most recent IN_PROGRESS scenario state across ALL scenarios.
     Used by the frontend LabSessionContext to determine which scenario is active
@@ -85,6 +86,16 @@ def perform_action(scenario_id: str, req: ActionRequest, db: Session = Depends(d
     if req.action == "end_session":
         state.status = "COMPLETED"
         state.completed_at = datetime.now(timezone.utc)
+        
+        meta = dict(state.metadata_json) if state.metadata_json else {}
+        meta["answers"] = req.answers or {}
+        state.metadata_json = meta
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(state, "metadata_json")
+
+        db.commit()
+        db.refresh(state)
+        
         EventBus.publish(ScenarioCompleted.create(
             entity_id=state.id,
             metadata={
@@ -93,11 +104,37 @@ def perform_action(scenario_id: str, req: ActionRequest, db: Session = Depends(d
                 "score": len(state.completed_stages) * 25 if state.completed_stages else 0
             }
         ))
-        db.commit()
         db.refresh(state)
         return {"status": "success", "state": state}
 
+@router.post("/{scenario_id}/hints/reveal")
+def reveal_hint(scenario_id: str, stage_id: int, db: Session = Depends(deps.get_db)):
+    from app.scenarios.scenario_state_model import ScenarioState
+    from sqlalchemy.orm.attributes import flag_modified
+    
+    state = db.query(ScenarioState).filter(
+        ScenarioState.scenario_id == scenario_id,
+        ScenarioState.status == "IN_PROGRESS"
+    ).order_by(ScenarioState.started_at.desc()).first()
+    
+    if not state:
+        raise HTTPException(status_code=400, detail="Scenario not in progress")
         
+    hints = dict(state.hints_used) if state.hints_used else {}
+    stage_str = str(stage_id)
+    
+    if stage_str not in hints:
+        hints[stage_str] = []
+        
+    # We allow revealing hint 0 and hint 1
+    if len(hints[stage_str]) < 2:
+        hints[stage_str].append(len(hints[stage_str]))
+        
+    state.hints_used = hints
+    flag_modified(state, "hints_used")
+    db.commit()
+    db.refresh(state)
+    return {"status": "success", "hints_used": hints}        
     stages = scenario.get("stages", [])
     current_stage_idx = state.current_stage - 1
     if current_stage_idx < len(stages):

@@ -11,6 +11,7 @@ export interface Asset {
   department_id?: string
   firmware_version?: string
   asset_group?: string
+  last_patch_date?: string
   last_seen?: string
 }
 

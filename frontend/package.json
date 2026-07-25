@@ -30,6 +30,7 @@
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.441.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

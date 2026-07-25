@@ -82,12 +82,12 @@ export function ScenarioCatalogPage() {
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="flex flex-col gap-6">
         {filteredScenarios.map(scenario => (
           <ScenarioCard key={scenario.id} scenario={scenario} />
         ))}
         {filteredScenarios.length === 0 && (
-          <div className="col-span-full py-12 text-center text-muted-foreground border border-dashed border-border rounded-xl">
+          <div className="py-12 text-center text-muted-foreground border border-dashed border-border rounded-xl">
             No scenarios found matching your filters.
           </div>
         )}

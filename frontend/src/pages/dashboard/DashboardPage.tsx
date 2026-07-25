@@ -148,14 +148,14 @@ export function DashboardPage() {
       </div>
 
       {/* Cyber Range Integration */}
-      <div className="grid gap-6 md:grid-cols-2 mt-8">
+      <div className="flex flex-col gap-8 mt-8">
         {recentScenariosData.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold tracking-tight">Recent Scenarios</h2>
               <Link to="/scenarios" className="text-sm text-primary hover:underline">View All</Link>
             </div>
-            <div className="grid gap-4">
+            <div className="flex flex-col gap-4">
               {recentScenariosData.map(s => (
                 // @ts-ignore - s is guaranteed to be Scenario here
                 <ScenarioCard key={s.id} scenario={s} />
@@ -170,7 +170,7 @@ export function DashboardPage() {
               <h2 className="text-lg font-semibold tracking-tight">Recommended Scenarios</h2>
               <Link to="/scenarios" className="text-sm text-primary hover:underline">Discover More</Link>
             </div>
-            <div className="grid gap-4">
+            <div className="flex flex-col gap-4">
               {recommendedScenarios.map(s => (
                 <ScenarioCard key={s.id} scenario={s} />
               ))}

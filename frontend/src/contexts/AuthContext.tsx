@@ -24,17 +24,23 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
+import { authService } from '@/services/auth'
+import { toast } from 'sonner'
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(tokenService.getAccessToken)
   const [user, setUser] = useState<UserResponse | null>(null)
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false)
 
   // Use TanStack Query to fetch current user if we have a token
   const { data: currentUserData, isLoading: isQueryLoading, isError } = useCurrentUser(!!token)
 
   // Derive initial session loading state. 
   // It's initializing if we have a token but haven't fetched the user yet, 
-  // or if the query is currently loading.
-  const isInitializing = !!token && (!user && isQueryLoading)
+  // or if the query is currently loading, OR if we are currently auto-logging in.
+  const isInitializing = (!!token && (!user && isQueryLoading)) || isAutoLoggingIn
+
+
 
   // Sync query data to local state when it arrives
   useEffect(() => {

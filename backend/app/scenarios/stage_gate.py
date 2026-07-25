@@ -52,6 +52,22 @@ def advance_if_stage_matches(db: Session, target_endpoint: str, action_context: 
     if current.get("id") not in completed:
         completed.append(current.get("id"))
     state.completed_stages = completed
+    
+    # Record timings
+    meta = dict(state.metadata_json) if state.metadata_json else {}
+    if "stage_completion_times" not in meta:
+        meta["stage_completion_times"] = {}
+    if "stage_start_times" not in meta:
+        meta["stage_start_times"] = {}
+        
+    now_iso = datetime.now(timezone.utc).isoformat()
+    meta["stage_completion_times"][str(state.current_stage)] = now_iso
+    meta["stage_start_times"][str(state.current_stage + 1)] = now_iso
+    state.metadata_json = meta
+    
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(state, "metadata_json")
+
     state.current_stage += 1
     state.last_action = target_endpoint
 
@@ -70,18 +86,7 @@ def advance_if_stage_matches(db: Session, target_endpoint: str, action_context: 
         }
     ))
 
-    # Check if this was the last stage
-    if current.get("next_stage") is None or state.current_stage > len(scenario.get("stages", [])):
-        state.status = "COMPLETED"
-        state.completed_at = datetime.now(timezone.utc)
-        EventBus.publish(ScenarioCompleted.create(
-            entity_id=state.id,
-            metadata={
-                "scenario_id": state.scenario_id,
-                "user_id": str(user_id),
-                "score": 100
-            }
-        ))
+    # Wait for the user to explicitly end the session via frontend for final completion
 
     db.commit()
     db.refresh(state)

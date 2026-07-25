@@ -84,13 +84,13 @@ export function EmployeeDetailsDialog({ employee, onClose }: EmployeeDetailsDial
 
               {/* Special Note Leak for Marcus Chen */}
               {(details.first_name === 'Marcus' || details.last_name === 'Chen') && (
-                <div className="p-4 rounded-lg border border-primary/40 bg-primary/10 space-y-2">
-                  <div className="flex items-center gap-2 text-primary font-semibold text-xs">
+                <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-900/20 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-500 font-semibold text-xs uppercase tracking-wider">
                     <FileText className="h-4 w-4 shrink-0" />
-                    <span>ENGINEER INTERNAL NOTE (LEAKED FINDING)</span>
+                    <span>Internal Memo</span>
                   </div>
-                  <p className="text-xs font-mono text-foreground leading-relaxed">
-                    "Line 2 halt issue was logged under ticket #402. Check deployment audit logs via the top <strong>Search bar</strong> using the term <code>firmware</code> or injection patterns to retrieve raw deployment events."
+                  <p className="text-sm text-foreground leading-relaxed">
+                    Marcus, please investigate the Line 2 halt issue logged under ticket #402. Search the deployment audit logs for firmware events to maintain and resolve this ticket.
                   </p>
                 </div>
               )}

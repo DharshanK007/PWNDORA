@@ -13,18 +13,22 @@ stages:
     target_endpoint: "POST /api/v1/auth/login"
     flaw_mode: "brute_force"
     vulnerability_category: "authentication"
-    objective: "Compromise the helpdesk account by exploiting the lack of login rate-limiting."
-    credentials_to_use: "Username: jess.okafor@neofactory.com | Password: Nf@2024! (Must fail login 5 times first to simulate a brute force)"
+    objective: "Investigate the helpdesk account reset after NeoFactory’s 2024 SSO upgrade and determine whether the login flow prevents repeated attempts against temporary credentials."
+    credentials_to_use: "Target Account: jess.okafor@neofactory.com | Recent SSO Upgrade Note: Several helpdesk accounts were reset after the company moved to a new single sign-on system. Temporary passwords appear to follow the pattern Nf@[****]!"
     discovery_process: >
       A maintenance ticket from three weeks ago contains an IT comment about a
-      recent account migration. Read between the lines of how IT teams typically
-      handle temporary credentials after directory migrations.
+      recent account migration. The SSO upgrade note suggests temporary credentials
+      were left active. Infer the pattern based on the current year and test the login endpoint's lack of rate limiting.
     capability_gained: >
       Recognizes authentication flows without rate-limiting as enabling credential
       compromise against weak or predictable passwords — even without a lockout bypass.
     evidence: ["helpdesk_login_session"]
     owasp: "A07:2021 - Identification and Authentication Failures"
     mitre: "T1110 - Brute Force"
+    mitre_techniques:
+      - "T1110 - Brute Force"
+      - "T1110.001 - Password Guessing"
+      - "T1078 - Valid Accounts"
     cvss:
       attack_vector: Network
       attack_complexity: Low
@@ -39,6 +43,39 @@ stages:
     attack_surface: "Login Form / POST /api/v1/auth/login"
     technical_mechanism: "No Rate-Limiting on Login Endpoint — Credential Stuffing / Pattern Brute-Force"
     discovery_surface: "Login Page & Maintenance Ticket Comments (IT Migration Thread)"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best captures the vulnerability exploited via the lack of rate-limiting on the login form?"
+        options:
+          - "T1110 - Brute Force"
+          - "T1190 - Exploit Public-Facing Application"
+          - "T1518 - Software Discovery"
+          - "T1087 - Account Discovery"
+        answer: "T1110 - Brute Force"
+      cvss:
+        AV: "Network"
+        PR: "Unauthenticated"
+        C: "High"
+        I: "Low"
+        A: "None"
+      owasp_likelihood:
+        L_Skill: "5"
+        L_Motive: "4"
+        L_Opp: "9"
+        L_Size: "9"
+        L_Disc: "7"
+        L_Exp: "9"
+        L_Aware: "6"
+        L_Detect: "8"
+      owasp_impact:
+        I_Conf: "6"
+        I_Integ: "1"
+        I_Avail: "1"
+        I_Acct: "7"
+        I_Fin: "3"
+        I_Rep: "5"
+        I_Comp: "2"
+        I_Priv: "5"
     next_stage: 2
 
   - id: 2
@@ -58,6 +95,10 @@ stages:
     evidence: ["backup_filename_reference"]
     owasp: "A03:2021 - Injection"
     mitre: "T1190 - Exploit Public-Facing Application"
+    mitre_techniques:
+      - "T1190 - Exploit Public-Facing Application"
+      - "T1213 - Data from Information Repositories"
+      - "T1005 - Data from Local System"
     cvss:
       attack_vector: Network
       attack_complexity: Low
@@ -72,6 +113,39 @@ stages:
     attack_surface: "Enterprise Search Input Bar"
     technical_mechanism: "Unsanitized Database Query Returning Out-of-Scope Device Backup References"
     discovery_surface: "Global Search Bar (Ctrl+K)"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best describes extracting out-of-scope backup references via search injection?"
+        options:
+          - "T1190 - Exploit Public-Facing Application"
+          - "T1110 - Brute Force"
+          - "T1087 - Account Discovery"
+          - "T1518 - Software Discovery"
+        answer: "T1190 - Exploit Public-Facing Application"
+      cvss:
+        AV: "Network"
+        PR: "Normal User"
+        C: "High"
+        I: "Low"
+        A: "None"
+      owasp_likelihood:
+        L_Skill: "5"
+        L_Motive: "4"
+        L_Opp: "9"
+        L_Size: "7"
+        L_Disc: "7"
+        L_Exp: "5"
+        L_Aware: "6"
+        L_Detect: "3"
+      owasp_impact:
+        I_Conf: "9"
+        I_Integ: "1"
+        I_Avail: "1"
+        I_Acct: "1"
+        I_Fin: "3"
+        I_Rep: "4"
+        I_Comp: "5"
+        I_Priv: "7"
     next_stage: 3
 
   - id: 3
@@ -79,12 +153,10 @@ stages:
     target_endpoint: "GET /api/v1/devices/{id}/backup"
     flaw_mode: "path_traversal"
     vulnerability_category: "broken_access_control"
-    objective: "Read the internal service credentials file via path traversal on the backup download."
+    objective: "Use the leaked device backup reference to investigate whether the backup download feature restricts file access to the intended backup directory."
     credentials_to_use: "Filename Input: ../../internal_secrets/svc_credentials.txt"
     discovery_process: >
-      The search results contain a backup filename reference for a device.
-      The device detail page now has a 'Download Config Backup' action.
-      Modify the filename parameter to navigate outside the intended backup directory.
+      The search results from Stage 2 exposed a backup filename and device reference. First verify that the backup download feature can retrieve the legitimate backup file, then inspect how the file is requested.
     capability_gained: >
       Can exploit unsanitized file-path parameters to read files outside an intended
       directory. Also identifies a secondary vulnerability: insecure on-disk storage
@@ -92,6 +164,9 @@ stages:
     evidence: ["svc_credentials_file"]
     owasp: "A01:2021 - Broken Access Control (Path Traversal)"
     mitre: "T1552.001 - Credentials In Files"
+    mitre_techniques:
+      - "T1083 - File and Directory Discovery"
+      - "T1552.001 - Credentials In Files"
     cvss:
       attack_vector: Network
       attack_complexity: Low
@@ -104,8 +179,41 @@ stages:
     owasp_risk_factors: {likelihood: 6, impact: 9}
     enterprise_layer: "Device Management / File System"
     attack_surface: "Device Config Backup Download"
-    technical_mechanism: "Unsanitized Filename Parameter Enabling Directory Traversal to Credential Store"
+    technical_mechanism: "Unsanitized Filename Parameter Enabling Directory Traversal to Internal Credential Store"
     discovery_surface: "Device Detail Page / Download Config Backup Feature"
+    evaluation_ground_truth:
+      mitre:
+        question: "Which MITRE ATT&CK technique best describes exploiting path traversal to access internal service credentials?"
+        options:
+          - "T1552.001 - Credentials in Files"
+          - "T1190 - Exploit Public-Facing Application"
+          - "T1110 - Brute Force"
+          - "T1518 - Software Discovery"
+        answer: "T1552.001 - Credentials in Files"
+      cvss:
+        AV: "Network"
+        PR: "Normal User"
+        C: "High"
+        I: "None"
+        A: "None"
+      owasp_likelihood:
+        L_Skill: "5"
+        L_Motive: "9"
+        L_Opp: "9"
+        L_Size: "9"
+        L_Disc: "3"
+        L_Exp: "3"
+        L_Aware: "5"
+        L_Detect: "1"
+      owasp_impact:
+        I_Conf: "9"
+        I_Integ: "5"
+        I_Avail: "1"
+        I_Acct: "7"
+        I_Fin: "7"
+        I_Rep: "5"
+        I_Comp: "5"
+        I_Priv: "3"
     next_stage: 4
 
   - id: 4
@@ -113,12 +221,10 @@ stages:
     target_endpoint: "GET /api/v1/employees/export"
     flaw_mode: "stolen_key_bypass"
     vulnerability_category: "broken_access_control"
-    objective: "Use the stolen internal service key to bypass admin authorization and export the full employee directory."
+    objective: "Use the exposed internal service credential to determine whether the employee export endpoint accepts service-level authorization outside the normal admin role check."
     credentials_to_use: "HTTP Header -> X-Service-Key: nf-internal-svc-x9k2p"
     discovery_process: >
-      The credentials file from Stage 3 contains an internal API key.
-      The employee export endpoint has a secondary authorization path that accepts
-      this key as an X-Service-Key header — the payoff of the theft chain.
+      The credentials file from Stage 3 contains an internal service key and scope indicating employee export capability. Compare how the export endpoint behaves for a normal helpdesk session versus a request carrying the service credential.
     capability_gained: >
       Can leverage exfiltrated internal service credentials to bypass an intended
       authorization boundary and access privileged data — confirming the 'unusual
@@ -126,6 +232,8 @@ stages:
     evidence: ["employee_export_payload"]
     owasp: "A01:2021 - Broken Access Control (Authorization Bypass)"
     mitre: "T1078 - Valid Accounts"
+    mitre_techniques:
+      - "T1078 - Valid Accounts"
     cvss:
       attack_vector: Network
       attack_complexity: Low
@@ -138,6 +246,6 @@ stages:
     owasp_risk_factors: {likelihood: 9, impact: 9}
     enterprise_layer: "Employee Data / HR Export"
     attack_surface: "Employee Export Endpoint"
-    technical_mechanism: "Authorization Check Accepts Stolen Internal Service Key as Valid Admin Credential Bypass"
+    technical_mechanism: "Employee Export Authorization Bypass Through Stolen Internal Service Key"
     discovery_surface: "Credentials File from Stage 3 / API Header Exploration"
     next_stage: null

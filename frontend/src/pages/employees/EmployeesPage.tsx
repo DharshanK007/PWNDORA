@@ -42,14 +42,35 @@ const columns: Column<Employee>[] = [
 
 import { ExportDirectoryDialog } from '@/components/common/dialog/ExportDirectoryDialog'
 import { EmployeeDetailsDialog } from '@/components/common/dialog/EmployeeDetailsDialog'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useLabSession } from '@/contexts/LabSessionContext'
 
 export function EmployeesPage() {
-  const { data, isLoading, isError, refetch } = useEmployees()
+  const { data, isLoading, isError, refetch } = useEmployees(0, 1000)
   const { currentStage, scenario } = useLabSession()
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  
+  const [lineFilter, setLineFilter] = useState<string>('All')
+  const [clearanceFilter, setClearanceFilter] = useState<string>('All')
+
+  const filteredEmployees = useMemo(() => {
+    if (!data?.items) return []
+    const filtered = data.items.filter(emp => {
+      const matchLine = lineFilter === 'All' || emp.title?.includes(lineFilter)
+      const matchClearance = clearanceFilter === 'All' || emp.clearance_level === clearanceFilter
+      return matchLine && matchClearance
+    })
+
+    // Force Marcus Chen to be at the 5th position (index 4) so he's not immediately obvious
+    const marcusIndex = filtered.findIndex(emp => emp.id === '88210345-4242-4111-9999-888888888888' || (emp.first_name === 'Marcus' && emp.last_name === 'Chen'))
+    if (marcusIndex !== -1 && filtered.length >= 5) {
+      const [marcus] = filtered.splice(marcusIndex, 1)
+      filtered.splice(4, 0, marcus)
+    }
+
+    return filtered
+  }, [data?.items, lineFilter, clearanceFilter])
 
   // Only reveal the Export feature during Stage 4 of Silent Exfiltration
   const showExport = scenario?.id === 'silent_exfiltration' && currentStage === 4
@@ -71,6 +92,43 @@ export function EmployeesPage() {
         }
       />
 
+      <div className="flex gap-4 items-center bg-card p-3 rounded-lg border border-border">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground">Production Line:</label>
+          <select 
+            className="text-sm bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            value={lineFilter}
+            onChange={(e) => setLineFilter(e.target.value)}
+          >
+            <option value="All">All Lines</option>
+            <option value="Production Line 1">Line 1</option>
+            <option value="Production Line 2">Line 2</option>
+            <option value="Production Line 3">Line 3</option>
+            <option value="Production Line 4">Line 4</option>
+            <option value="Production Line 5">Line 5</option>
+            <option value="Production Line 6">Line 6</option>
+            <option value="Production Line 7">Line 7</option>
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground">Clearance:</label>
+          <select 
+            className="text-sm bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            value={clearanceFilter}
+            onChange={(e) => setClearanceFilter(e.target.value)}
+          >
+            <option value="All">All Clearances</option>
+            <option value="OT">OT</option>
+            <option value="Analyst">Analyst</option>
+            <option value="HR">HR</option>
+            <option value="Dev">Dev</option>
+            <option value="Assoc">Assoc</option>
+            <option value="R&D dep">R&D dep</option>
+          </select>
+        </div>
+      </div>
+
       <div className="w-full">
         {isError ? (
           <EmptyModule
@@ -89,11 +147,11 @@ export function EmployeesPage() {
         ) : (
           <InfoPanel title="Personnel Directory">
             <DataTable
-              data={data?.items || []}
+              data={filteredEmployees}
               columns={columns}
               isLoading={isLoading}
               keyExtractor={(item) => item.id}
-              emptyMessage="No employees found in the organization."
+              emptyMessage="No employees match the selected filters."
               onRowClick={(item) => setSelectedEmployee(item)}
             />
           </InfoPanel>
@@ -105,10 +163,12 @@ export function EmployeesPage() {
         onClose={() => setSelectedEmployee(null)}
       />
 
-      <ExportDirectoryDialog 
-        isOpen={isExportDialogOpen} 
-        onClose={() => setIsExportDialogOpen(false)} 
-      />
+      {showExport && (
+        <ExportDirectoryDialog 
+          isOpen={isExportDialogOpen} 
+          onClose={() => setIsExportDialogOpen(false)} 
+        />
+      )}
     </div>
   )
 }

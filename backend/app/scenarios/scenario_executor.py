@@ -19,7 +19,12 @@ class ScenarioExecutor:
             user_id=user_id,
             status="IN_PROGRESS",
             current_stage=1,
-            started_at=datetime.now(timezone.utc)
+            started_at=datetime.now(timezone.utc),
+            metadata_json={
+                "stage_start_times": {"1": datetime.now(timezone.utc).isoformat()},
+                "stage_completion_times": {},
+                "answers": {}
+            }
         )
         db.add(state)
         db.commit()

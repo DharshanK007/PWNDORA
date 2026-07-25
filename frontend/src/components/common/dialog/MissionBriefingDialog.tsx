@@ -12,10 +12,8 @@ export function MissionBriefingDialog({ isOpen, onClose, scenarioName, stage }: 
   if (!isOpen || !stage) return null
 
   return (
-    <div
-      className="fixed top-32 right-6 z-50 flex flex-col w-full max-w-lg rounded-xl border border-border bg-card shadow-2xl animate-in slide-in-from-right-8 duration-300 overflow-hidden"
-    >
-      <div className="flex flex-col w-full h-full relative">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="flex flex-col w-full max-w-2xl max-h-[90vh] rounded-xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border p-4 bg-muted/40">
           <div className="flex items-center gap-3">
@@ -69,6 +67,28 @@ export function MissionBriefingDialog({ isOpen, onClose, scenarioName, stage }: 
               </p>
             </div>
           </div>
+
+          {stage.mitre_techniques && stage.mitre_techniques.length > 0 && (
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground font-semibold text-xs uppercase tracking-wider">
+                <Target className="h-3.5 w-3.5" />
+                <span>MITRE ATTACK TECHNIQUES MAPPED</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {stage.mitre_techniques.map((tech: string, idx: number) => {
+                  const [id, ...nameParts] = tech.split(' - ')
+                  const name = nameParts.join(' - ')
+                  return (
+                    <div key={idx} className="flex gap-2 font-mono text-[11px] text-primary">
+                      <span className="font-bold shrink-0">{id}</span>
+                      <span className="shrink-0">-</span>
+                      <span className="text-foreground">{name || tech}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-muted-foreground font-semibold text-sm border-b border-border pb-2">

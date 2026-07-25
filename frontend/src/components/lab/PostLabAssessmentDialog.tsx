@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ShieldAlert, ChevronRight, Send, AlertTriangle } from 'lucide-react'
 
 // Stage objects are passed directly from scenario.stages[]
@@ -11,12 +11,18 @@ interface ScenarioStage {
   vulnerability_category?: string
   enterprise_layer?: string
   attack_surface?: string
+  evaluation_ground_truth?: {
+    mitre: { question: string, options: string[], answer: string }
+    cvss: Record<string, string>
+    owasp_likelihood: Record<string, string>
+    owasp_impact: Record<string, string>
+  }
 }
 
 interface PostLabAssessmentDialogProps {
   isOpen: boolean
   completedStages: ScenarioStage[]
-  onSubmit: () => void
+  onSubmit: (answers: any) => void
   onCancel: () => void
 }
 
@@ -52,7 +58,15 @@ const OWASP_IMPACT = [
 
 export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onCancel }: PostLabAssessmentDialogProps) {
   const [currentStageIndex, setCurrentStageIndex] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0
+    }
+  }, [currentStageIndex])
   const [answers, setAnswers] = useState<Record<number, Record<string, string>>>({})
+  const [showResults, setShowResults] = useState(false)
 
   if (!isOpen) return null
 
@@ -64,7 +78,7 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
           <ShieldAlert className="h-10 w-10 text-primary mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Lab Terminated</h2>
           <p className="text-muted-foreground mb-6">You ended the session before capturing any flags. No assessment required.</p>
-          <button onClick={onSubmit} className="w-full bg-primary text-primary-foreground py-2 rounded-md font-semibold">End Session Now</button>
+          <button onClick={() => onSubmit({})} className="w-full bg-primary text-primary-foreground py-2 rounded-md font-semibold">End Session Now</button>
         </div>
       </div>
     )
@@ -89,12 +103,13 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
     const cvssDone = CVSS_FACTORS.every(f => !!stageAnswers[f.id])
     const lDone = OWASP_LIKELIHOOD.every(f => !!stageAnswers[f.id])
     const iDone = OWASP_IMPACT.every(f => !!stageAnswers[f.id])
-    return cvssDone && lDone && iDone
+    const mitreDone = !!stageAnswers['mitre']
+    return cvssDone && lDone && iDone && mitreDone
   }
 
   const handleNext = () => {
     if (isLastStage) {
-      onSubmit()
+      setShowResults(true)
     } else {
       setCurrentStageIndex(prev => prev + 1)
     }
@@ -108,8 +123,8 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {factors.map(f => (
           <div key={f.id} className="space-y-1.5">
-            <label className="text-xs font-bold block text-muted-foreground">{f.label}</label>
-            <p className="text-[10px] text-muted-foreground/80 leading-tight mb-2 h-6">{f.desc}</p>
+            <label className="text-base font-extrabold block text-slate-900">{f.label}</label>
+            <p className="text-xs text-slate-700 leading-tight mb-2 h-6">{f.desc}</p>
             <div className="flex gap-1.5 flex-wrap">
               {f.options.map((val: string) => (
                 <button
@@ -131,8 +146,89 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
     </div>
   )
 
+  if (showResults) {
+    let totalQuestions = 0
+    let correctCount = 0
+    const results = completedStages.map(stage => {
+      const stageAnswers = answers[stage.id] || {}
+      const gt = stage.evaluation_ground_truth
+      const wrong: { question: string, user: string, correct: string }[] = []
+      
+      if (gt) {
+        if (stageAnswers['mitre'] !== gt.mitre.answer) {
+          wrong.push({ question: 'MITRE ATT&CK', user: stageAnswers['mitre'] || 'None', correct: gt.mitre.answer })
+        } else { correctCount++ }
+        totalQuestions++
+
+        CVSS_FACTORS.forEach(f => {
+          if (stageAnswers[f.id] !== gt.cvss[f.id]) {
+            wrong.push({ question: `CVSS ${f.label}`, user: stageAnswers[f.id] || 'None', correct: gt.cvss[f.id] })
+          } else { correctCount++ }
+          totalQuestions++
+        })
+
+        OWASP_LIKELIHOOD.forEach(f => {
+          if (stageAnswers[f.id] !== gt.owasp_likelihood[f.id]) {
+            wrong.push({ question: `OWASP ${f.label}`, user: stageAnswers[f.id] || 'None', correct: gt.owasp_likelihood[f.id] })
+          } else { correctCount++ }
+          totalQuestions++
+        })
+
+        OWASP_IMPACT.forEach(f => {
+          if (stageAnswers[f.id] !== gt.owasp_impact[f.id]) {
+            wrong.push({ question: `OWASP ${f.label}`, user: stageAnswers[f.id] || 'None', correct: gt.owasp_impact[f.id] })
+          } else { correctCount++ }
+          totalQuestions++
+        })
+      }
+
+      return { stage, wrong }
+    })
+
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="bg-card w-full max-w-4xl rounded-xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-primary/10 border-b border-primary/20 p-5 flex justify-between items-center shrink-0">
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Assessment Results</h2>
+              <p className="text-sm text-muted-foreground">Accuracy: {totalQuestions > 0 ? Math.round((correctCount/totalQuestions)*100) : 0}% ({correctCount}/{totalQuestions})</p>
+            </div>
+            <button onClick={() => onSubmit(answers)} className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors">
+              Finish Lab Session
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
+            {results.map(({ stage, wrong }, idx) => (
+              <div key={stage.id} className="border border-border rounded-lg p-4 bg-muted/10">
+                <h3 className="font-bold text-base mb-3 text-foreground">Stage {idx + 1}: {stage.objective}</h3>
+                {wrong.length === 0 ? (
+                  <div className="text-emerald-500 font-medium text-sm flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4" /> Perfect Score!
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-destructive">Incorrect Answers ({wrong.length}):</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {wrong.map((w, i) => (
+                        <div key={i} className="bg-destructive/5 border border-destructive/20 p-3 rounded text-xs space-y-1">
+                          <p className="font-bold text-foreground">{w.question}</p>
+                          <p className="text-muted-foreground">Your answer: <span className="text-destructive line-through">{w.user}</span></p>
+                          <p className="text-emerald-500 font-medium">Correct answer: {w.correct}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
       <div className="bg-card w-full max-w-4xl rounded-xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         <div className="bg-primary/10 border-b border-primary/20 p-5 flex items-center gap-3 shrink-0">
@@ -140,7 +236,7 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
             <ShieldAlert className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Post-Lab Vulnerability Assessment</h2>
+            <h2 className="text-lg font-bold text-foreground">PenTest-Vulnerability Assessment</h2>
             <p className="text-sm text-muted-foreground">Map CVSS & OWASP Metrics for each exploited chain component.</p>
           </div>
         </div>
@@ -159,7 +255,7 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
           ))}
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div ref={scrollRef} className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="mb-2">
             <h3 className="text-lg font-semibold text-primary mb-1">
               Evaluating: {currentStage.objective ?? `Stage ${currentStage.id}`}
@@ -168,6 +264,30 @@ export function PostLabAssessmentDialog({ isOpen, completedStages, onSubmit, onC
               Vulnerability: {currentStage.owasp ?? currentStage.vulnerability_category ?? 'Unknown'}
             </span>
           </div>
+
+          {currentStage.evaluation_ground_truth?.mitre && (
+            <div className="p-4 rounded-lg border border-border bg-indigo-500/5 space-y-4">
+              <h4 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-indigo-600" /> MITRE ATT&CK Technique
+              </h4>
+              <p className="text-lg text-slate-900 font-bold">{currentStage.evaluation_ground_truth.mitre.question}</p>
+              <div className="flex flex-col gap-2 mt-2">
+                {currentStage.evaluation_ground_truth.mitre.options.map((opt: string) => (
+                  <button
+                    key={opt}
+                    onClick={() => handleSelect('mitre', opt)}
+                    className={`py-2 px-3 rounded text-left text-sm font-medium border transition-colors ${
+                      answers[currentStage.id]?.['mitre'] === opt 
+                        ? 'bg-indigo-500 text-white border-indigo-500' 
+                        : 'bg-background hover:bg-muted border-border text-foreground'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {renderSection('CVSS v3.1 Base Metrics', CVSS_FACTORS, 'bg-muted/10')}
           {renderSection('OWASP Risk Likelihood (Threat & Vuln)', OWASP_LIKELIHOOD, 'bg-amber-500/5 border-amber-500/20')}

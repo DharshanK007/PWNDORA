@@ -10,6 +10,7 @@ interface ScenarioStage {
   vulnerability_category?: string
   owasp?: string
   mitre?: string
+  mitre_techniques?: string[]
   cvss?: Record<string, string>
   enterprise_layer?: string
   attack_surface?: string
@@ -35,6 +36,7 @@ interface ScenarioState {
   status: string
   started_at: string
   completed_at?: string | null
+  hints_used?: Record<string, number[]>
 }
 
 interface LabSessionContextType {
@@ -56,7 +58,6 @@ export const LabSessionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [scenario, setScenario] = useState<ScenarioConfig | null>(null)
 
   const fetchSession = useCallback(async () => {
-    if (!isAuthenticated) return
     try {
       // Poll the generic active-state endpoint — returns whichever scenario is currently IN_PROGRESS
       // or the most recently COMPLETED one. No hardcoded scenario ID.
@@ -75,18 +76,13 @@ export const LabSessionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch {
       // Ignore polling errors silently
     }
-  }, [isAuthenticated])
+  }, [])
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchSession()
-      const interval = setInterval(fetchSession, 3000)
-      return () => clearInterval(interval)
-    } else {
-      setState(null)
-      setScenario(null)
-    }
-  }, [isAuthenticated, fetchSession])
+    fetchSession()
+    const interval = setInterval(fetchSession, 3000)
+    return () => clearInterval(interval)
+  }, [fetchSession])
 
   const isActive = state?.status === 'IN_PROGRESS' || state?.status === 'COMPLETED'
   const currentStage = state?.current_stage ?? 1

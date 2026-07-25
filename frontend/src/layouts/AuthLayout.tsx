@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { AppLogo } from '@/components/common/AppLogo'
 import { APP } from '@/constants/app'
+import { LabStatusBar } from '@/components/lab/LabStatusBar'
 
 // ─── Auth Layout ──────────────────────────────────────────────────────────────
 // Centered card layout for login and auth pages
@@ -11,9 +12,11 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">
-      {/* Logo */}
-      <div className="mb-8 flex flex-col items-center gap-3">
+    <div className="flex min-h-screen flex-col bg-muted/30 relative">
+      <LabStatusBar />
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        {/* Logo */}
+        <div className="mb-8 flex flex-col items-center gap-3">
         <AppLogo />
         <p className="text-xs text-muted-foreground">{APP.DESCRIPTION}</p>
       </div>
@@ -27,6 +30,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <p className="mt-6 text-xs text-muted-foreground">
         © {new Date().getFullYear()} {APP.COMPANY}. All rights reserved.
       </p>
+      </div>
     </div>
   )
 }

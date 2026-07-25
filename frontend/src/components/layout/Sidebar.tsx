@@ -50,7 +50,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
 
       {/* Main Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-2 custom-scrollbar">
         {NAVIGATION_CONFIG.map(group => (
           <SidebarGroup key={group.id} group={group} collapsed={collapsed} />
         ))}

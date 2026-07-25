@@ -14,7 +14,7 @@ export function AssetDetailsDialog({ asset, onClose }: AssetDetailsDialogProps) 
   const [isLoading, setIsLoading] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
   const [pushResult, setPushResult] = useState<string | null>(null)
-  const { refetch } = useLabSession()
+  const { refetch, scenario, currentStage } = useLabSession()
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -121,33 +121,41 @@ export function AssetDetailsDialog({ asset, onClose }: AssetDetailsDialogProps) 
                     <p><strong>Operating System:</strong> OT-RTOS v1.2.3 (Outdated)</p>
                     <p><strong>Vendor:</strong> Vendor PLC Corp</p>
                     <p><strong>Maintenance Advisory:</strong> Deferred update — vendor advisory pending review</p>
-                    <p className="pt-1 text-primary font-semibold">
-                      <strong>Assigned Lead Engineer:</strong> Marcus Chen (OT Operations)
-                    </p>
+                    {scenario?.id === 'operation_phantom_firmware' ? (
+                      <p className="pt-1 text-primary font-semibold">
+                        <strong>Assigned Job Role:</strong> OT Operations
+                      </p>
+                    ) : (
+                      <p className="pt-1 text-primary font-semibold">
+                        <strong>Assigned Lead Engineer:</strong> Marcus Chen (OT Operations)
+                      </p>
+                    )}
                   </div>
 
                   {/* Push Firmware Action Button */}
-                  <div className="pt-2 border-t border-amber-500/30 space-y-2">
-                    <button
-                      onClick={handleFirmwarePush}
-                      disabled={isPushing}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium text-xs transition-all shadow-md active:scale-98 disabled:opacity-50"
-                    >
-                      <Zap className="h-4 w-4" />
-                      <span>
-                        {isPushing
-                          ? 'Pushing Firmware (Overriding X-User-Role)...'
-                          : 'Push Firmware Update (Elevate Role: Administrator)'}
-                      </span>
-                    </button>
+                  {(!scenario || (scenario.id === 'operation_phantom_firmware' && currentStage === 4)) && (
+                    <div className="pt-2 border-t border-amber-500/30 space-y-2">
+                      <button
+                        onClick={handleFirmwarePush}
+                        disabled={isPushing}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium text-xs transition-all shadow-md active:scale-98 disabled:opacity-50"
+                      >
+                        <Zap className="h-4 w-4" />
+                        <span>
+                          {isPushing
+                            ? 'Pushing Firmware (Overriding X-User-Role)...'
+                            : 'Push Firmware Update (Elevate Role: Administrator)'}
+                        </span>
+                      </button>
 
-                    {pushResult && (
-                      <div className="p-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs flex items-center gap-2 font-mono">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>{pushResult}</span>
-                      </div>
-                    )}
-                  </div>
+                      {pushResult && (
+                        <div className="p-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs flex items-center gap-2 font-mono">
+                          <CheckCircle2 className="h-4 w-4 shrink-0" />
+                          <span>{pushResult}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -163,51 +171,53 @@ export function AssetDetailsDialog({ asset, onClose }: AssetDetailsDialogProps) 
               </div>
 
               {/* Configuration Backup Explorer */}
-              <div className="space-y-2 text-xs mt-4">
-                <div className="flex items-center gap-2 text-muted-foreground font-semibold">
-                  <Server className="h-4 w-4 text-primary" />
-                  <span>Configuration Backup Archive</span>
-                </div>
-                <div className="p-4 rounded-lg border border-border/60 bg-muted/20 space-y-3">
-                  <p className="text-muted-foreground mb-2">Retrieve archived configuration files for this asset.</p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      className="flex-1 px-3 py-2 rounded-md border border-border bg-background font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="Enter backup filename..."
-                      defaultValue="ot-ctrl-backup-line7.cfg"
-                      id="backup-filename-input"
-                    />
-                    <button
-                      onClick={async () => {
-                        const filename = (document.getElementById('backup-filename-input') as HTMLInputElement).value
-                        if (!filename) return
-                        try {
-                          const res = await api.get('/devices/' + details.id + '/backup?filename=' + encodeURIComponent(filename))
-                          const outputEl = document.getElementById('backup-output')
-                          if (outputEl) {
-                            outputEl.textContent = res.data.content || JSON.stringify(res.data, null, 2)
-                            outputEl.classList.remove('hidden', 'text-destructive')
-                            outputEl.classList.add('text-emerald-400')
-                          }
-                          if (refetch) await refetch()
-                        } catch (err: any) {
-                          const outputEl = document.getElementById('backup-output')
-                          if (outputEl) {
-                            outputEl.textContent = err.response?.data?.detail || 'Failed to fetch backup file.'
-                            outputEl.classList.remove('hidden', 'text-emerald-400')
-                            outputEl.classList.add('text-destructive')
-                          }
-                        }
-                      }}
-                      className="px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
-                    >
-                      Fetch Archive
-                    </button>
+              {scenario?.id !== 'operation_phantom_firmware' && (
+                <div className="space-y-2 text-xs mt-4">
+                  <div className="flex items-center gap-2 text-muted-foreground font-semibold">
+                    <Server className="h-4 w-4 text-primary" />
+                    <span>Configuration Backup Archive</span>
                   </div>
-                  <pre id="backup-output" className="hidden p-3 mt-2 bg-black/80 rounded border border-border text-[10px] font-mono overflow-x-auto max-h-48"></pre>
+                  <div className="p-4 rounded-lg border border-border/60 bg-muted/20 space-y-3">
+                    <p className="text-muted-foreground mb-2">Retrieve archived configuration files for this asset.</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 px-3 py-2 rounded-md border border-border bg-background font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="Enter backup filename..."
+                        defaultValue="ot-ctrl-backup-line7.cfg"
+                        id="backup-filename-input"
+                      />
+                      <button
+                        onClick={async () => {
+                          const filename = (document.getElementById('backup-filename-input') as HTMLInputElement).value
+                          if (!filename) return
+                          try {
+                            const res = await api.get('/devices/' + details.id + '/backup?filename=' + encodeURIComponent(filename))
+                            const outputEl = document.getElementById('backup-output')
+                            if (outputEl) {
+                              outputEl.textContent = res.data.content || JSON.stringify(res.data, null, 2)
+                              outputEl.classList.remove('hidden', 'text-destructive')
+                              outputEl.classList.add('text-emerald-400')
+                            }
+                            if (refetch) await refetch()
+                          } catch (err: any) {
+                            const outputEl = document.getElementById('backup-output')
+                            if (outputEl) {
+                              outputEl.textContent = err.response?.data?.detail || 'Failed to fetch backup file.'
+                              outputEl.classList.remove('hidden', 'text-emerald-400')
+                              outputEl.classList.add('text-destructive')
+                            }
+                          }
+                        }}
+                        className="px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
+                      >
+                        Fetch Archive
+                      </button>
+                    </div>
+                    <pre id="backup-output" className="hidden p-3 mt-2 bg-black/80 rounded border border-border text-[10px] font-mono overflow-x-auto max-h-48"></pre>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="p-4 text-center text-muted-foreground">No details available.</div>

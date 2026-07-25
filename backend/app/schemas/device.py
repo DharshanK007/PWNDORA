@@ -11,6 +11,8 @@ class DeviceBase(BaseModel):
     status: DeviceStatusEnum = DeviceStatusEnum.OFFLINE
     location_id: Optional[UUID] = None
     firmware_id: Optional[UUID] = None
+    last_patch_date: Optional[str] = None
+    asset_group: Optional[str] = None
 
 class DeviceCreate(DeviceBase):
     pass

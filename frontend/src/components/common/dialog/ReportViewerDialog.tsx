@@ -1,5 +1,13 @@
-import { useEffect, useRef } from 'react'
-import { X, FileText } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { X, FileText, Loader2 } from 'lucide-react'
+import { ReportInfographics, InfographicData } from './ReportInfographics'
+
+// We conditionally import html2pdf so it doesn't break SSR (if applicable) or load immediately
+let html2pdf: any = null
+import('html2pdf.js').then((module) => {
+  html2pdf = module.default
+})
+
 interface ReportViewerDialogProps {
   isOpen: boolean
   reportId?: string
@@ -20,6 +28,7 @@ export function ReportViewerDialog({
   onSaved,
 }: ReportViewerDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const isSubmitted = status === 'Under Review' || status === 'Approved' || status === 'Published'
 
   useEffect(() => {
@@ -46,6 +55,21 @@ export function ReportViewerDialog({
   }, [onClose])
 
   if (!isOpen) return null
+
+  // Extract Infographics Data if present
+  let cleanContent = content
+  let infographicsData: InfographicData[] = []
+  
+  if (content.includes('<!-- [INFOGRAPHICS_DATA]')) {
+    const parts = content.split('<!-- [INFOGRAPHICS_DATA]')
+    cleanContent = parts[0]
+    try {
+      const jsonStr = parts[1].split('-->')[0].trim()
+      infographicsData = JSON.parse(jsonStr)
+    } catch (e) {
+      console.error('Failed to parse infographics data', e)
+    }
+  }
 
   // Render markdown helper
   const renderFormattedMarkdown = (raw: string) => {
@@ -97,6 +121,32 @@ export function ReportViewerDialog({
     })
   }
 
+  const handleDownloadPDF = async () => {
+    if (!html2pdf) return
+    setIsGeneratingPdf(true)
+    
+    // Give state a moment to render the infographics wrapper
+    await new Promise(r => setTimeout(r, 200))
+
+    const element = document.getElementById('report-pdf-content')
+    if (element) {
+      const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     `${title.replace(/\s+/g, '_').toLowerCase()}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }
+      
+      try {
+        await html2pdf().set(opt).from(element).save()
+      } catch (err) {
+        console.error('PDF generation failed:', err)
+      }
+    }
+    
+    setIsGeneratingPdf(false)
+  }
 
   return (
     <dialog
@@ -130,24 +180,44 @@ export function ReportViewerDialog({
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6" id="report-pdf-content">
+          {isGeneratingPdf && infographicsData.length > 0 && (
+            <div className="mb-8">
+              <h1 className="text-3xl font-extrabold text-center mb-8 pb-4 border-b border-slate-200 text-slate-800 uppercase tracking-widest">{title}</h1>
+              <ReportInfographics data={infographicsData} />
+            </div>
+          )}
+          
           {/* Render Main Formatted Summary */}
           <div className="space-y-2">
-            {renderFormattedMarkdown(content)}
+            {renderFormattedMarkdown(cleanContent)}
           </div>
-
-
         </div>
 
         {/* Footer */}
         <div className="border-t border-border p-4 bg-muted/40 flex justify-between items-center">
           <span className="text-xs text-muted-foreground">
-            {isSubmitted ? 'Assessment Report published.' : 'Draft Report Preview.'}
+            {isSubmitted ? 'PenTest-Vulnerability Assessment published.' : 'Draft Report Preview.'}
           </span>
           <div className="flex items-center gap-3">
             <button
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="inline-flex h-9 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground px-4 text-sm font-medium transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating PDF...
+                </>
+              ) : (
+                'Download (.pdf)'
+              )}
+            </button>
+            <button
               onClick={onClose}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent"
+              disabled={isGeneratingPdf}
+              className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
             >
               Close
             </button>
